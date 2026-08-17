@@ -28,4 +28,10 @@ function emitStockUpdate(productId, quantity) {
   io.emit('stock:updated', { productId, quantity });
 }
 
-module.exports = { initSocket, emitStockUpdate };
+// Broadcast a new notification (new order, new payment, low stock, ...) to admin clients
+function emitNotification(notification) {
+  if (!io) return;
+  io.emit('notification:new', notification);
+}
+
+module.exports = { initSocket, emitStockUpdate, emitNotification };

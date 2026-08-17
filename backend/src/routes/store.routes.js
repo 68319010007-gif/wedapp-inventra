@@ -3,6 +3,7 @@ const prisma = require('../config/database');
 const { authenticateCustomer } = require('../middleware/customerAuth');
 const { AppError, asyncHandler, success, paginate } = require('../utils/helpers');
 const { emitStockUpdate } = require('../socket');
+const upload = require('../middleware/upload');
 
 const router = express.Router();
 
@@ -10,6 +11,11 @@ const productInclude = {
   category: true,
   inventoryItems: true,
   images: { orderBy: { sortOrder: 'asc' } },
+};
+
+const orderInclude = {
+  items: { include: { product: { select: { name: true, sku: true, image: true } } } },
+  payment: true,
 };
 
 router.get(
@@ -80,8 +86,14 @@ router.post(
   '/checkout',
   authenticateCustomer,
   asyncHandler(async (req, res) => {
-    const { items, note } = req.body;
+    const { items, note, customer } = req.body;
     if (!items?.length) throw new AppError('Items are required');
+
+    const shippingLines = [];
+    if (customer?.name) shippingLines.push(`Ship to: ${customer.name}`);
+    if (customer?.phone) shippingLines.push(`Phone: ${customer.phone}`);
+    if (customer?.address) shippingLines.push(`Address: ${customer.address}`);
+    const fullNote = [note, shippingLines.join(' | ')].filter(Boolean).join('\n');
 
     for (const item of items) {
       const product = await prisma.product.findUnique({
@@ -118,7 +130,7 @@ router.post(
           subtotal,
           discount: 0,
           total: subtotal,
-          note: note || 'Online store order',
+          note: fullNote || 'Online store order',
           items: { create: orderItems },
         },
         include: { customer: true, items: { include: { product: true } } },
@@ -164,7 +176,7 @@ router.get(
         where,
         skip,
         take,
-        include: { items: { include: { product: { select: { name: true, sku: true, image: true } } } } },
+        include: orderInclude,
         orderBy: { createdAt: 'desc' },
       }),
       prisma.salesOrder.count({ where }),
@@ -180,7 +192,7 @@ router.get(
   asyncHandler(async (req, res) => {
     const order = await prisma.salesOrder.findFirst({
       where: { id: req.params.id, customerId: req.customer.id },
-      include: { items: { include: { product: { select: { name: true, sku: true, image: true } } } } },
+      include: orderInclude,
     });
     if (!order) throw new AppError('Order not found', 404);
     success(res, order);
@@ -227,7 +239,7 @@ router.patch(
       return tx.salesOrder.update({
         where: { id: order.id },
         data: { status: 'CANCELLED' },
-        include: { items: { include: { product: { select: { name: true, sku: true, image: true } } } } },
+        include: orderInclude,
       });
     });
 
@@ -244,6 +256,41 @@ router.patch(
     });
 
     success(res, updated, 'Order cancelled');
+  })
+);
+
+router.post(
+  '/orders/:id/payment',
+  authenticateCustomer,
+  upload.single('slip'),
+  asyncHandler(async (req, res) => {
+    if (!req.file) throw new AppError('No payment slip uploaded');
+
+    const order = await prisma.salesOrder.findFirst({
+      where: { id: req.params.id, customerId: req.customer.id },
+    });
+    if (!order) throw new AppError('Order not found', 404);
+    if (order.status === 'CANCELLED') throw new AppError('Cannot submit payment for a cancelled order');
+
+    const slipUrl = `/uploads/${req.file.filename}`;
+
+    const payment = await prisma.payment.upsert({
+      where: { orderId: order.id },
+      update: { slipUrl, status: 'PENDING', note: null, verifiedById: null },
+      create: { orderId: order.id, slipUrl, status: 'PENDING' },
+    });
+
+    await prisma.auditLog.create({
+      data: {
+        userId: null,
+        action: 'SUBMIT_PAYMENT',
+        module: 'payments',
+        detail: `${order.orderNo} payment slip submitted by ${req.customer.name} (${req.customer.email || req.customer.id})`,
+        ip: req.ip,
+      },
+    });
+
+    success(res, payment, 'Payment notification submitted', 201);
   })
 );
 

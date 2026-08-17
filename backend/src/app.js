@@ -20,6 +20,7 @@ const dashboardRoutes = require('./routes/dashboard.routes');
 const settingsRoutes = require('./routes/settings.routes');
 const uploadRoutes = require('./routes/upload.routes');
 const auditLogRoutes = require('./routes/auditLog.routes');
+const paymentsRoutes = require('./routes/payments.routes');
 const storeAuthRoutes = require('./routes/storeAuth.routes');
 const storeRoutes = require('./routes/store.routes');
 
@@ -54,6 +55,7 @@ api.use('/dashboard', dashboardRoutes);
 api.use('/settings', settingsRoutes);
 api.use('/upload', uploadRoutes);
 api.use('/audit-log', auditLogRoutes);
+api.use('/payments', paymentsRoutes);
 
 app.use('/api/v1', api);
 app.use(notFound);
