@@ -30,6 +30,7 @@ services:
       JWT_EXPIRES_IN: ${JWT_EXPIRES_IN:-7d}
       CORS_ORIGIN: http://202.29.231.188:30007
       UPLOAD_DIR: uploads
+      MAX_FILE_SIZE: ${MAX_FILE_SIZE:-5242880}
     volumes:
       - ./data/backend-uploads:/app/uploads
     networks:
