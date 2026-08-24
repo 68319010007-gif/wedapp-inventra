@@ -1,0 +1,19 @@
+FROM node:20-alpine
+
+WORKDIR /app
+
+COPY package*.json ./
+COPY prisma ./prisma/
+
+RUN npm install
+
+COPY . .
+
+RUN mkdir -p uploads
+
+EXPOSE 4000
+
+# หมายเหตุ: เอา "npx prisma db seed" ออกจาก CMD เดิม (dev) เพราะถ้าปล่อยไว้
+# ทุกครั้งที่ container restart/redeploy จะรัน seed ซ้ำ เสี่ยง error/ข้อมูลซ้ำบน production
+# seed ให้รันครั้งเดียวตอน setup แรกผ่าน: docker compose exec backend npx prisma db seed
+CMD ["sh", "-c", "npx prisma migrate deploy && npm start"]
