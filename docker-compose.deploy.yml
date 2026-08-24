@@ -1,0 +1,55 @@
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: 68319010007-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-inventra}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD ไม่ได้ตั้งค่า}
+      POSTGRES_DB: ${POSTGRES_DB:-inventra}
+    volumes:
+      - ./data/postgres:/var/lib/postgresql/data
+    networks:
+      - 68319010007-net
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-inventra}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    # หมายเหตุ: ไม่ publish 5432 ออกอินเทอร์เน็ต ใช้ได้เฉพาะภายใน network นี้เท่านั้น
+
+  backend:
+    image: ${DOCKERHUB_USERNAME}/wedapp-inventra-backend:latest
+    container_name: 68319010007-backend
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      PORT: 4000
+      DATABASE_URL: postgresql://${POSTGRES_USER:-inventra}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB:-inventra}?schema=public
+      JWT_SECRET: ${JWT_SECRET:?JWT_SECRET ไม่ได้ตั้งค่า}
+      JWT_EXPIRES_IN: ${JWT_EXPIRES_IN:-7d}
+      CORS_ORIGIN: http://202.29.231.188:30007
+      UPLOAD_DIR: uploads
+    volumes:
+      - ./data/backend-uploads:/app/uploads
+    networks:
+      - 68319010007-net
+    depends_on:
+      db:
+        condition: service_healthy
+    # หมายเหตุ: ไม่ publish 4000 ออกอินเทอร์เน็ต — frontend (nginx) เป็นตัวเดียวที่คุยกับ backend ผ่าน network ภายใน
+
+  frontend:
+    image: ${DOCKERHUB_USERNAME}/wedapp-inventra-frontend:latest
+    container_name: 68319010007-frontend
+    restart: unless-stopped
+    ports:
+      - "30007:80"   # <- พอร์ตสาธารณะเดียวของแอปนี้ (http://202.29.231.188:30007/)
+    networks:
+      - 68319010007-net
+    depends_on:
+      - backend
+
+networks:
+  68319010007-net:
+    name: 68319010007-net
