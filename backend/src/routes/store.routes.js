@@ -2,8 +2,13 @@ const express = require('express');
 const prisma = require('../config/database');
 const { authenticateCustomer } = require('../middleware/customerAuth');
 const { AppError, asyncHandler, success, paginate } = require('../utils/helpers');
-const { emitStockUpdate } = require('../socket');
 const upload = require('../middleware/upload');
+const {
+  shouldHaveStockDeducted,
+  restoreStock,
+  assertStockAvailable,
+  broadcastStock,
+} = require('../utils/stock');
 
 const router = express.Router();
 
@@ -95,69 +100,38 @@ router.post(
     if (customer?.address) shippingLines.push(`Address: ${customer.address}`);
     const fullNote = [note, shippingLines.join(' | ')].filter(Boolean).join('\n');
 
-    for (const item of items) {
-      const product = await prisma.product.findUnique({
-        where: { id: item.productId },
-        include: { inventoryItems: true },
-      });
-      if (!product || !product.isActive) throw new AppError(`Product not available: ${item.productId}`);
-      const stock = product.inventoryItems?.quantity ?? 0;
-      if (stock < item.quantity) throw new AppError(`Insufficient stock for ${product.name}`);
-    }
-
-    const count = await prisma.salesOrder.count();
-    const orderNo = `SO-${String(count + 1).padStart(5, '0')}`;
     const customerRecord = req.customer;
 
-    let subtotal = 0;
-    const orderItems = [];
-    for (const item of items) {
-      const product = await prisma.product.findUnique({ where: { id: item.productId } });
-      const unitPrice = Number(product.sellPrice);
-      const total = unitPrice * item.quantity;
-      subtotal += total;
-      orderItems.push({ productId: item.productId, quantity: item.quantity, unitPrice, total });
-    }
-
-    const stockChanges = [];
-
     const order = await prisma.$transaction(async (tx) => {
-      const created = await tx.salesOrder.create({
+      await assertStockAvailable(tx, items);
+
+      let subtotal = 0;
+      const orderItems = [];
+      for (const item of items) {
+        const product = await tx.product.findUnique({ where: { id: item.productId } });
+        const unitPrice = Number(product.sellPrice);
+        const total = unitPrice * item.quantity;
+        subtotal += total;
+        orderItems.push({ productId: item.productId, quantity: item.quantity, unitPrice, total });
+      }
+
+      const count = await tx.salesOrder.count();
+      const orderNo = `SO-${String(count + 1).padStart(5, '0')}`;
+
+      return tx.salesOrder.create({
         data: {
           orderNo,
           customerId: customerRecord.id,
-          status: 'PROCESSING',
+          status: 'PENDING',
           subtotal,
           discount: 0,
           total: subtotal,
           note: fullNote || 'Online store order',
           items: { create: orderItems },
         },
-        include: { customer: true, items: { include: { product: true } } },
+        include: { customer: true, items: { include: { product: true } }, payment: true },
       });
-
-      for (const item of orderItems) {
-        const inv = await tx.inventoryItem.findUnique({ where: { productId: item.productId } });
-        const updated = await tx.inventoryItem.update({
-          where: { productId: item.productId },
-          data: { quantity: inv.quantity - item.quantity },
-        });
-        stockChanges.push({ productId: item.productId, quantity: updated.quantity });
-        await tx.stockMovement.create({
-          data: {
-            productId: item.productId,
-            type: 'OUT',
-            quantity: item.quantity,
-            reference: orderNo,
-            note: 'Online store checkout',
-          },
-        });
-      }
-
-      return created;
     });
-
-    stockChanges.forEach(({ productId, quantity }) => emitStockUpdate(productId, quantity));
 
     success(res, order, 'Order placed successfully', 201);
   })
@@ -216,24 +190,12 @@ router.patch(
     const stockChanges = [];
 
     const updated = await prisma.$transaction(async (tx) => {
-      for (const item of order.items) {
-        const inv = await tx.inventoryItem.findUnique({ where: { productId: item.productId } });
-        const newQty = (inv?.quantity ?? 0) + item.quantity;
-        if (inv) {
-          await tx.inventoryItem.update({ where: { productId: item.productId }, data: { quantity: newQty } });
-        } else {
-          await tx.inventoryItem.create({ data: { productId: item.productId, quantity: newQty } });
-        }
-        stockChanges.push({ productId: item.productId, quantity: newQty });
-        await tx.stockMovement.create({
-          data: {
-            productId: item.productId,
-            type: 'IN',
-            quantity: item.quantity,
-            reference: order.orderNo,
-            note: 'Order cancelled by customer — stock restored',
-          },
+      if (shouldHaveStockDeducted(order.status)) {
+        const restored = await restoreStock(tx, order.items, {
+          reference: order.orderNo,
+          note: 'Order cancelled by customer — stock restored',
         });
+        stockChanges.push(...restored);
       }
 
       return tx.salesOrder.update({
@@ -243,7 +205,7 @@ router.patch(
       });
     });
 
-    stockChanges.forEach(({ productId, quantity }) => emitStockUpdate(productId, quantity));
+    broadcastStock(stockChanges);
 
     await prisma.auditLog.create({
       data: {
