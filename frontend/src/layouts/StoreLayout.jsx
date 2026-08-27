@@ -1,5 +1,5 @@
 import { Link, NavLink, Outlet } from 'react-router-dom';
-import { ShoppingCart, Search, LayoutDashboard, User } from 'lucide-react';
+import { ShoppingCart, Search, LayoutDashboard } from 'lucide-react';
 import { useCart } from '../store/CartContext';
 import { useStoreAuth } from '../store/StoreAuthContext';
 import { useLanguage } from '../i18n';
@@ -52,10 +52,10 @@ export default function StoreLayout() {
 
             {isAuthenticated ? (
               <div className="flex items-center gap-2">
-                <Link to="/orders" className="hidden rounded-xl border border-slate-200 px-3 py-2 text-xs font-medium text-muted hover:border-primary hover:text-primary sm:block">
+                <Link to="/account/orders" className="hidden rounded-xl border border-slate-200 px-3 py-2 text-xs font-medium text-muted hover:border-primary hover:text-primary sm:block">
                   {t('store.myOrders')}
                 </Link>
-                <Link to="/profile" className="flex items-center gap-2 rounded-xl border border-slate-200 px-2 py-1.5 hover:border-primary">
+                <Link to="/account" className="flex items-center gap-2 rounded-xl border border-slate-200 px-2 py-1.5 hover:border-primary">
                   <Avatar src={customer?.avatar} name={customer?.name} size="sm" />
                   <span className="hidden text-xs font-medium text-slate-700 sm:inline">{customer?.name?.split(' ')[0]}</span>
                 </Link>

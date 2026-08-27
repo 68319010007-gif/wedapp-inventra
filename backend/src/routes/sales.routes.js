@@ -3,7 +3,12 @@ const prisma = require('../config/database');
 const { authenticate, authorize } = require('../middleware/auth');
 const { auditLog } = require('../middleware/auditLog');
 const { AppError, asyncHandler, success, paginate } = require('../utils/helpers');
-const { emitStockUpdate } = require('../socket');
+const {
+  shouldHaveStockDeducted,
+  deductStock,
+  restoreStock,
+  broadcastStock,
+} = require('../utils/stock');
 
 const router = express.Router();
 router.use(authenticate);
@@ -101,32 +106,19 @@ router.post(
         include: { customer: true, items: { include: { product: true } } },
       });
 
-      if (['PROCESSING', 'SHIPPING', 'COMPLETED'].includes(created.status)) {
-        for (const item of orderItems) {
-          const inv = await tx.inventoryItem.findUnique({ where: { productId: item.productId } });
-          if (!inv || inv.quantity < item.quantity) throw new AppError(`Insufficient stock for product ${item.productId}`);
-          const updated = await tx.inventoryItem.update({
-            where: { productId: item.productId },
-            data: { quantity: inv.quantity - item.quantity },
-          });
-          stockChanges.push({ productId: item.productId, quantity: updated.quantity });
-          await tx.stockMovement.create({
-            data: {
-              productId: item.productId,
-              type: 'OUT',
-              quantity: item.quantity,
-              reference: orderNo,
-              note: 'Sales order',
-              createdById: req.user.id,
-            },
-          });
-        }
+      if (shouldHaveStockDeducted(created.status)) {
+        const deducted = await deductStock(tx, orderItems, {
+          reference: orderNo,
+          note: 'Sales order',
+          createdById: req.user.id,
+        });
+        stockChanges.push(...deducted);
       }
 
       return created;
     });
 
-    stockChanges.forEach(({ productId, quantity }) => emitStockUpdate(productId, quantity));
+    broadcastStock(stockChanges);
 
     await auditLog(req, 'CREATE_ORDER', 'sales', orderNo);
     success(res, order, 'Sales order created', 201);
@@ -138,15 +130,49 @@ router.put(
   authorize('ADMIN', 'MANAGER', 'STAFF'),
   asyncHandler(async (req, res) => {
     const { status, note, discount } = req.body;
-    const order = await prisma.salesOrder.update({
-      where: { id: req.params.id },
-      data: {
-        ...(status && { status }),
-        ...(note !== undefined && { note }),
-        ...(discount !== undefined && { discount: Number(discount) }),
-      },
-      include: { customer: true, items: { include: { product: true } } },
+    const stockChanges = [];
+
+    const order = await prisma.$transaction(async (tx) => {
+      const existing = await tx.salesOrder.findUnique({
+        where: { id: req.params.id },
+        include: { items: true },
+      });
+      if (!existing) throw new AppError('Order not found', 404);
+
+      if (status && status !== existing.status) {
+        const wasDeducted = shouldHaveStockDeducted(existing.status);
+        const willDeduct = shouldHaveStockDeducted(status);
+        if (!wasDeducted && willDeduct) {
+          stockChanges.push(
+            ...(await deductStock(tx, existing.items, {
+              reference: existing.orderNo,
+              note: `Status changed to ${status}`,
+              createdById: req.user.id,
+            }))
+          );
+        } else if (wasDeducted && !willDeduct) {
+          stockChanges.push(
+            ...(await restoreStock(tx, existing.items, {
+              reference: existing.orderNo,
+              note: `Status changed to ${status} — stock restored`,
+              createdById: req.user.id,
+            }))
+          );
+        }
+      }
+
+      return tx.salesOrder.update({
+        where: { id: existing.id },
+        data: {
+          ...(status && { status }),
+          ...(note !== undefined && { note }),
+          ...(discount !== undefined && { discount: Number(discount) }),
+        },
+        include: { customer: true, items: { include: { product: true } } },
+      });
     });
+
+    broadcastStock(stockChanges);
     await auditLog(req, 'UPDATE_ORDER', 'sales', order.orderNo);
     success(res, order, 'Order updated');
   })
@@ -159,12 +185,40 @@ router.patch(
     const { status } = req.body;
     if (!status) throw new AppError('Status is required');
 
-    const order = await prisma.salesOrder.update({
-      where: { id: req.params.id },
-      data: { status },
-      include: { customer: true, items: true },
+    const stockChanges = [];
+    const order = await prisma.$transaction(async (tx) => {
+      const existing = await tx.salesOrder.findUnique({
+        where: { id: req.params.id },
+        include: { items: true },
+      });
+      if (!existing) throw new AppError('Order not found', 404);
+
+      const wasDeducted = shouldHaveStockDeducted(existing.status);
+      const willDeduct = shouldHaveStockDeducted(status);
+      if (!wasDeducted && willDeduct) {
+        const deducted = await deductStock(tx, existing.items, {
+          reference: existing.orderNo,
+          note: `Status changed to ${status}`,
+          createdById: req.user.id,
+        });
+        stockChanges.push(...deducted);
+      } else if (wasDeducted && !willDeduct) {
+        const restored = await restoreStock(tx, existing.items, {
+          reference: existing.orderNo,
+          note: `Status changed to ${status} — stock restored`,
+          createdById: req.user.id,
+        });
+        stockChanges.push(...restored);
+      }
+
+      return tx.salesOrder.update({
+        where: { id: existing.id },
+        data: { status },
+        include: { customer: true, items: true },
+      });
     });
 
+    broadcastStock(stockChanges);
     await auditLog(req, 'UPDATE_ORDER_STATUS', 'sales', `${order.orderNo} → ${status}`);
     success(res, order, 'Order status updated');
   })
@@ -181,7 +235,20 @@ router.delete(
     if (!order) throw new AppError('Order not found', 404);
     if (order.status === 'COMPLETED') throw new AppError('Cannot delete completed order');
 
-    await prisma.salesOrder.delete({ where: { id: req.params.id } });
+    const stockChanges = [];
+    await prisma.$transaction(async (tx) => {
+      if (shouldHaveStockDeducted(order.status)) {
+        const restored = await restoreStock(tx, order.items, {
+          reference: order.orderNo,
+          note: 'Sales order deleted — stock restored',
+          createdById: req.user.id,
+        });
+        stockChanges.push(...restored);
+      }
+      await tx.salesOrder.delete({ where: { id: order.id } });
+    });
+
+    broadcastStock(stockChanges);
     await auditLog(req, 'DELETE_ORDER', 'sales', order.orderNo);
     success(res, null, 'Order deleted');
   })

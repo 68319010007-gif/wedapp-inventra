@@ -97,7 +97,7 @@ export default function OrdersPage() {
   if (loading) return <LoadingState />;
 
   return (
-    <div className="mx-auto max-w-5xl px-4 py-8 lg:px-8">
+    <div>
       <h1 className="mb-6 text-3xl font-bold text-slate-900">{t('store.myOrders')}</h1>
       <Alert message={error} />
 

@@ -23,6 +23,7 @@ const auditLogRoutes = require('./routes/auditLog.routes');
 const paymentsRoutes = require('./routes/payments.routes');
 const storeAuthRoutes = require('./routes/storeAuth.routes');
 const storeRoutes = require('./routes/store.routes');
+const addressesRoutes = require('./routes/addresses.routes');
 
 const app = express();
 
@@ -40,6 +41,7 @@ api.get('/health', (_req, res) => {
 });
 
 api.use('/store/auth', storeAuthRoutes);
+api.use('/store/addresses', addressesRoutes);
 api.use('/store', storeRoutes);
 api.use('/auth', authRoutes);
 api.use('/users', usersRoutes);

@@ -7,6 +7,7 @@ import ProtectedRoute from './components/ProtectedRoute';
 import StoreProtectedRoute from './components/StoreProtectedRoute';
 import DashboardLayout from './layouts/DashboardLayout';
 import StoreLayout from './layouts/StoreLayout';
+import AccountLayout from './layouts/AccountLayout';
 import LoginPage from './pages/LoginPage';
 import AdminProfilePage from './pages/AdminProfilePage';
 import DashboardPage from './pages/DashboardPage';
@@ -29,6 +30,8 @@ import CheckoutPage from './pages/store/CheckoutPage';
 import StoreLoginPage from './pages/store/StoreLoginPage';
 import StoreRegisterPage from './pages/store/StoreRegisterPage';
 import StoreProfilePage from './pages/store/StoreProfilePage';
+import AccountOverviewPage from './pages/store/AccountOverviewPage';
+import AddressesPage from './pages/store/AddressesPage';
 import OrdersPage from './pages/store/OrdersPage';
 
 export default function App() {
@@ -51,12 +54,18 @@ export default function App() {
                   <Route path="checkout" element={
                     <StoreProtectedRoute><CheckoutPage /></StoreProtectedRoute>
                   } />
-                  <Route path="profile" element={
-                    <StoreProtectedRoute><StoreProfilePage /></StoreProtectedRoute>
-                  } />
-                  <Route path="orders" element={
-                    <StoreProtectedRoute><OrdersPage /></StoreProtectedRoute>
-                  } />
+
+                  <Route path="account" element={
+                    <StoreProtectedRoute><AccountLayout /></StoreProtectedRoute>
+                  }>
+                    <Route index element={<AccountOverviewPage />} />
+                    <Route path="profile" element={<StoreProfilePage />} />
+                    <Route path="addresses" element={<AddressesPage />} />
+                    <Route path="orders" element={<OrdersPage />} />
+                  </Route>
+
+                  <Route path="profile" element={<Navigate to="/account/profile" replace />} />
+                  <Route path="orders" element={<Navigate to="/account/orders" replace />} />
                 </Route>
 
                 <Route path="/admin/login" element={<LoginPage />} />

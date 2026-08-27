@@ -179,6 +179,13 @@ POST   /store/auth/login
 GET    /store/auth/me
 PUT    /store/auth/profile
 PUT    /store/auth/password
+POST   /store/auth/upload
+
+GET    /store/addresses
+POST   /store/addresses
+GET    /store/addresses/:id
+PUT    /store/addresses/:id
+DELETE /store/addresses/:id
 
 GET    /store/categories
 GET    /store/products
@@ -190,6 +197,15 @@ GET    /store/orders/:id
 PATCH  /store/orders/:id/cancel
 POST   /store/orders/:id/payment
 ```
+
+## Customer Account (หน้าร้าน)
+
+| หน้า | URL |
+| --- | --- |
+| ภาพรวมบัญชี | `/account` |
+| แก้ไขข้อมูลส่วนตัว | `/account/profile` |
+| จัดการที่อยู่ | `/account/addresses` |
+| คำสั่งซื้อ | `/account/orders` |
 
 ## Real-time Updates
 
