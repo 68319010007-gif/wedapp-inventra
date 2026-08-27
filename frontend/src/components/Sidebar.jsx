@@ -1,7 +1,7 @@
 import { NavLink } from 'react-router-dom';
 import {
   LayoutDashboard, Package, Tags, Warehouse, ShoppingCart, Users, Truck,
-  ClipboardList, BarChart3, Settings, LogOut, Store, UserCog, User, Receipt,
+  ClipboardList, BarChart3, Settings, LogOut, Store, UserCog, User, Receipt, Landmark,
 } from 'lucide-react';
 import { useAuth } from '../store/AuthContext';
 import { useLanguage } from '../i18n';
@@ -19,6 +19,7 @@ export default function Sidebar() {
     { to: '/admin/inventory', icon: Warehouse, label: t('nav.inventory') },
     { to: '/admin/sales', icon: ShoppingCart, label: t('nav.sales') },
     { to: '/admin/payments', icon: Receipt, label: t('nav.payments') },
+    { to: '/admin/payment-channels', icon: Landmark, label: t('nav.paymentChannels') },
     { to: '/admin/customers', icon: Users, label: t('nav.customers') },
     { to: '/admin/suppliers', icon: Truck, label: t('nav.suppliers') },
     { to: '/admin/purchases', icon: ClipboardList, label: t('nav.purchases') },

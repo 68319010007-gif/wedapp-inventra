@@ -21,6 +21,7 @@ const settingsRoutes = require('./routes/settings.routes');
 const uploadRoutes = require('./routes/upload.routes');
 const auditLogRoutes = require('./routes/auditLog.routes');
 const paymentsRoutes = require('./routes/payments.routes');
+const paymentChannelsRoutes = require('./routes/paymentChannels.routes');
 const storeAuthRoutes = require('./routes/storeAuth.routes');
 const storeRoutes = require('./routes/store.routes');
 const addressesRoutes = require('./routes/addresses.routes');
@@ -58,6 +59,7 @@ api.use('/settings', settingsRoutes);
 api.use('/upload', uploadRoutes);
 api.use('/audit-log', auditLogRoutes);
 api.use('/payments', paymentsRoutes);
+api.use('/payment-channels', paymentChannelsRoutes);
 
 app.use('/api/v1', api);
 app.use(notFound);
