@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Package, X, Upload } from 'lucide-react';
+import { Package, X, Upload, Copy, Check, ZoomIn, ZoomOut } from 'lucide-react';
 import storeApi from '../../services/storeApi';
 import { getImageUrl, getProductPlaceholder } from '../../utils/imageUrl';
 import { formatCurrency, formatDateTime } from '../../utils/format';
@@ -24,6 +24,19 @@ const paymentStyles = {
 
 const cancellableStatuses = ['PENDING', 'PROCESSING'];
 
+function formatOrderDateTime(val) {
+  if (!val) return '-';
+  return new Date(val).toLocaleString('th-TH', {
+    day: 'numeric',
+    month: 'numeric',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+    hour12: false,
+  });
+}
+
 export default function OrdersPage() {
   const { t } = useLanguage();
   const [orders, setOrders] = useState([]);
@@ -34,6 +47,11 @@ export default function OrdersPage() {
   const [slipFile, setSlipFile] = useState(null);
   const [uploadingSlip, setUploadingSlip] = useState(false);
   const [error, setError] = useState('');
+  const [channels, setChannels] = useState([]);
+  const [channelsLoading, setChannelsLoading] = useState(false);
+  const [copiedId, setCopiedId] = useState(null);
+  const [qrPreview, setQrPreview] = useState(null);
+  const [qrZoom, setQrZoom] = useState(1);
 
   const statusLabels = {
     PENDING: t('store.statusPending'),
@@ -57,7 +75,19 @@ export default function OrdersPage() {
       .finally(() => setLoading(false));
   }, []);
 
-  useEffect(() => { load(); }, [load]);
+  useEffect(() => {
+    load();
+  }, [load]);
+
+  useEffect(() => {
+    if (!payingOrderId) return;
+    setChannelsLoading(true);
+    storeApi
+      .get('/payment-channels/public')
+      .then((res) => setChannels(res.data.data.items || []))
+      .catch(() => setChannels([]))
+      .finally(() => setChannelsLoading(false));
+  }, [payingOrderId]);
 
   const handleCancel = async () => {
     setCancelling(true);
@@ -94,12 +124,36 @@ export default function OrdersPage() {
     }
   };
 
+  const copyAccount = async (ch) => {
+    try {
+      await navigator.clipboard.writeText(ch.accountNumber);
+      setCopiedId(ch.id);
+      setTimeout(() => setCopiedId(null), 1500);
+    } catch {
+      /* ignore */
+    }
+  };
+
+  const closePayModal = () => {
+    setPayingOrderId(null);
+    setSlipFile(null);
+    setQrPreview(null);
+    setQrZoom(1);
+  };
+
+  const openQrPreview = (url, name) => {
+    setQrZoom(1);
+    setQrPreview({ url, name });
+  };
+
+  const payingOrder = orders.find((o) => o.id === payingOrderId) || null;
+
   if (loading) return <LoadingState />;
 
   return (
     <div>
       <h1 className="mb-6 text-3xl font-bold text-slate-900">{t('store.myOrders')}</h1>
-      <Alert message={error} />
+      <Alert message={error && !payingOrderId ? error : ''} />
 
       {orders.length === 0 ? (
         <div className="rounded-2xl border border-slate-200 bg-white p-16 text-center">
@@ -157,7 +211,7 @@ export default function OrdersPage() {
                 <p className="font-semibold text-primary">{t('store.total')}: {formatCurrency(order.total)}</p>
                 <div className="flex flex-wrap gap-2">
                   {order.status !== 'CANCELLED' && (!order.payment || order.payment.status === 'REJECTED') && (
-                    <Button onClick={() => setPayingOrderId(order.id)}>
+                    <Button onClick={() => { setError(''); setPayingOrderId(order.id); }}>
                       <Upload size={14} /> {t('store.notifyPayment')}
                     </Button>
                   )}
@@ -183,8 +237,83 @@ export default function OrdersPage() {
         loading={cancelling}
       />
 
-      <Modal open={!!payingOrderId} onClose={() => { setPayingOrderId(null); setSlipFile(null); }} title={t('store.notifyPayment')} size="sm">
+      <Modal open={!!payingOrderId} onClose={closePayModal} title={t('store.notifyPayment')} size="lg">
+        <Alert message={error} />
         <p className="mb-4 text-sm text-muted">{t('store.uploadSlipHint')}</p>
+
+        <div className="mb-5">
+          <h4 className="mb-2 text-sm font-semibold text-slate-900">{t('store.payTo')}</h4>
+          {channelsLoading ? (
+            <p className="text-sm text-muted">{t('common.loading')}</p>
+          ) : channels.length === 0 ? (
+            <p className="rounded-xl bg-amber-50 px-3 py-2 text-sm text-amber-800">{t('store.noPaymentChannels')}</p>
+          ) : (
+            <div className="space-y-3">
+              {channels.map((ch) => (
+                <div key={ch.id} className="rounded-xl border border-slate-200 bg-slate-50 p-3">
+                  <p className="font-medium text-slate-900">{ch.name}</p>
+                  {ch.bankName && <p className="text-xs text-muted">{ch.bankName}</p>}
+                  <div className="mt-3 flex flex-col items-center gap-4 sm:flex-row sm:items-start">
+                    {ch.qrImageUrl && (
+                      <button
+                        type="button"
+                        onClick={() => openQrPreview(getImageUrl(ch.qrImageUrl), ch.name)}
+                        className="group relative shrink-0 rounded-xl border border-white bg-white p-2 shadow-sm focus:outline-none focus:ring-2 focus:ring-primary"
+                        title={t('store.zoomQr')}
+                      >
+                        <img
+                          src={getImageUrl(ch.qrImageUrl)}
+                          alt={`QR ${ch.name}`}
+                          className="h-56 w-56 object-contain sm:h-64 sm:w-64"
+                        />
+                        <span className="absolute inset-x-2 bottom-2 flex items-center justify-center gap-1 rounded-lg bg-navy/75 px-2 py-1 text-xs text-white opacity-90 group-hover:opacity-100">
+                          <ZoomIn size={14} /> {t('store.zoomQr')}
+                        </span>
+                      </button>
+                    )}
+                    <div className="min-w-0 flex-1 space-y-1 text-sm sm:pt-1">
+                      <p>
+                        <span className="text-muted">{t('store.accountName')}: </span>
+                        {ch.accountName}
+                      </p>
+                      <p className="flex flex-wrap items-center gap-2">
+                        <span className="text-muted">{t('store.accountNumber')}: </span>
+                        <span className="font-mono font-semibold tracking-wide">{ch.accountNumber}</span>
+                        <button
+                          type="button"
+                          onClick={() => copyAccount(ch)}
+                          className="inline-flex items-center gap-1 rounded-md bg-white px-2 py-0.5 text-xs text-primary shadow-sm ring-1 ring-slate-200 hover:bg-slate-50"
+                        >
+                          {copiedId === ch.id ? <Check size={12} /> : <Copy size={12} />}
+                          {copiedId === ch.id ? t('store.copied') : t('store.copyAccount')}
+                        </button>
+                      </p>
+                      {ch.note && <p className="text-xs text-muted">{ch.note}</p>}
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {payingOrder && (
+          <div className="mb-4 rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm">
+            <p>
+              <span className="text-muted">{t('store.orderNo')}: </span>
+              <span className="font-semibold text-slate-900">{payingOrder.orderNo}</span>
+            </p>
+            <p className="mt-1">
+              <span className="text-muted">{t('store.orderDateTime')}: </span>
+              <span className="font-medium text-slate-800">{formatOrderDateTime(payingOrder.createdAt)}</span>
+            </p>
+            <p className="mt-1">
+              <span className="text-muted">{t('store.total')}: </span>
+              <span className="font-semibold text-primary">{formatCurrency(payingOrder.total)}</span>
+            </p>
+          </div>
+        )}
+
         <label className="flex h-40 cursor-pointer flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed border-slate-200 text-muted hover:border-primary hover:text-primary">
           {slipFile ? (
             <img src={URL.createObjectURL(slipFile)} alt="slip preview" className="h-full w-full rounded-xl object-contain p-2" />
@@ -197,10 +326,68 @@ export default function OrdersPage() {
           <input type="file" accept="image/*" className="hidden" onChange={(e) => setSlipFile(e.target.files?.[0] || null)} />
         </label>
         <div className="mt-6 flex justify-end gap-3">
-          <Button variant="ghost" onClick={() => { setPayingOrderId(null); setSlipFile(null); }}>{t('common.cancel')}</Button>
+          <Button variant="ghost" onClick={closePayModal}>{t('common.cancel')}</Button>
           <Button onClick={handleSubmitPayment} loading={uploadingSlip} disabled={!slipFile}>{t('store.submitPayment')}</Button>
         </div>
       </Modal>
+
+      {qrPreview && (
+        <div
+          className="fixed inset-0 z-[60] flex flex-col bg-navy/90"
+          role="dialog"
+          aria-modal="true"
+          aria-label={t('store.zoomQr')}
+        >
+          <div className="flex items-center justify-between gap-3 px-4 py-3 text-white">
+            <p className="truncate text-sm font-medium">{qrPreview.name}</p>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                className="rounded-lg bg-white/10 p-2 hover:bg-white/20"
+                onClick={() => setQrZoom((z) => Math.max(1, Number((z - 0.25).toFixed(2))))}
+                aria-label="Zoom out"
+              >
+                <ZoomOut size={18} />
+              </button>
+              <span className="min-w-[3rem] text-center text-xs tabular-nums">{Math.round(qrZoom * 100)}%</span>
+              <button
+                type="button"
+                className="rounded-lg bg-white/10 p-2 hover:bg-white/20"
+                onClick={() => setQrZoom((z) => Math.min(3, Number((z + 0.25).toFixed(2))))}
+                aria-label="Zoom in"
+              >
+                <ZoomIn size={18} />
+              </button>
+              <button
+                type="button"
+                className="rounded-lg bg-white/10 p-2 hover:bg-white/20"
+                onClick={() => { setQrPreview(null); setQrZoom(1); }}
+                aria-label={t('common.cancel')}
+              >
+                <X size={18} />
+              </button>
+            </div>
+          </div>
+          <div
+            className="flex flex-1 items-center justify-center overflow-auto p-4"
+            onClick={() => { setQrPreview(null); setQrZoom(1); }}
+            onWheel={(e) => {
+              e.preventDefault();
+              const delta = e.deltaY > 0 ? -0.15 : 0.15;
+              setQrZoom((z) => Math.min(3, Math.max(1, Number((z + delta).toFixed(2)))));
+            }}
+          >
+            <img
+              src={qrPreview.url}
+              alt={`QR ${qrPreview.name}`}
+              className="max-h-none origin-center rounded-xl bg-white object-contain p-3 shadow-2xl transition-transform"
+              style={{ width: `${Math.round(280 * qrZoom)}px`, height: `${Math.round(280 * qrZoom)}px` }}
+              onClick={(e) => e.stopPropagation()}
+            />
+          </div>
+          <p className="pb-4 text-center text-xs text-white/70">{t('store.zoomQrHint')}</p>
+        </div>
+      )}
     </div>
   );
 }

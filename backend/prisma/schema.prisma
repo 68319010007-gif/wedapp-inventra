@@ -255,6 +255,23 @@ model Payment {
   verifiedBy User?      @relation("VerifiedBy", fields: [verifiedById], references: [id])
 }
 
+/// ช่องทางรับเงินที่แอดมินตั้งค่าให้ลูกค้าโอน (ชื่อบัญชี / เลขบัญชี / QR)
+model PaymentChannel {
+  id            String   @id @default(cuid())
+  name          String
+  bankName      String?
+  accountName   String
+  accountNumber String
+  qrImageUrl    String?
+  note          String?
+  isActive      Boolean  @default(true)
+  sortOrder     Int      @default(0)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@index([isActive, sortOrder])
+}
+
 model PurchaseOrder {
   id         String         @id @default(cuid())
   poNo       String         @unique

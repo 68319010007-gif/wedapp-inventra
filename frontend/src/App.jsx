@@ -19,6 +19,7 @@ import CustomersPage from './pages/CustomersPage';
 import SuppliersPage from './pages/SuppliersPage';
 import PurchasesPage from './pages/PurchasesPage';
 import PaymentsPage from './pages/PaymentsPage';
+import PaymentChannelsPage from './pages/PaymentChannelsPage';
 import ReportsPage from './pages/ReportsPage';
 import SettingsPage from './pages/SettingsPage';
 import UsersPage from './pages/UsersPage';
@@ -80,6 +81,7 @@ export default function App() {
                     <Route path="suppliers" element={<SuppliersPage />} />
                     <Route path="purchases" element={<PurchasesPage />} />
                     <Route path="payments" element={<PaymentsPage />} />
+                    <Route path="payment-channels" element={<PaymentChannelsPage />} />
                     <Route path="users" element={<UsersPage />} />
                     <Route path="reports" element={<ReportsPage />} />
                     <Route path="settings" element={<SettingsPage />} />
