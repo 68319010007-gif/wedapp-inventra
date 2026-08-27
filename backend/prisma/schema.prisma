@@ -59,20 +59,73 @@ model User {
 }
 
 model Customer {
-  id        String   @id @default(cuid())
-  code      String   @unique
-  name      String
-  email     String?  @unique
-  password  String?
-  phone     String?
-  address   String?
-  avatar    String?
-  taxId     String?
-  isActive  Boolean  @default(true)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id               String   @id @default(cuid())
+  code             String   @unique
+  name             String
+  email            String?  @unique
+  password         String?
+  phone            String?
+  address          String?
+  avatar           String?
+  taxId            String?
+  marketingConsent Boolean  @default(false)
+  isActive         Boolean  @default(true)
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
 
   salesOrders SalesOrder[]
+  addresses   CustomerAddress[]
+}
+
+enum ResidenceType {
+  HOUSE
+  CONDO
+  TOWNHOUSE
+  APARTMENT
+  OTHER
+}
+
+enum VehicleAccess {
+  TRUCK_4_AND_6
+  TRUCK_4_ONLY
+  TRUCK_6_ONLY
+  NONE
+}
+
+model CustomerAddress {
+  id                 String         @id @default(cuid())
+  customerId         String
+  label              String
+  firstName          String
+  lastName           String
+  phone              String
+  phoneAlt           String?
+  houseNo            String
+  moo                String?
+  village            String?
+  floor              String?
+  room               String?
+  soi                String?
+  road               String?
+  postalCode         String
+  subdistrict        String?
+  district           String?
+  province           String?
+  residenceType      ResidenceType?
+  residenceOther     String?
+  hasElevator        Boolean?
+  vehicleAccess      VehicleAccess?
+  lat                Float?
+  lng                Float?
+  mapAddress         String?
+  isDefaultShipping  Boolean        @default(false)
+  isDefaultTax       Boolean        @default(false)
+  createdAt          DateTime       @default(now())
+  updatedAt          DateTime       @updatedAt
+
+  customer Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+
+  @@index([customerId])
 }
 
 model Supplier {
