@@ -19,7 +19,7 @@ api.interceptors.response.use(
     if (err.response?.status === 401 && !err.config.url?.includes('/auth/login') && window.location.pathname.startsWith('/admin')) {
       localStorage.removeItem('inventra_token');
       localStorage.removeItem('inventra_user');
-      window.location.href = '/login';
+      window.location.href = '/admin/login';
     }
     return Promise.reject(err);
   }
