@@ -15,7 +15,9 @@ const customerSelect = {
   phone: true,
   address: true,
   avatar: true,
+  taxId: true,
   code: true,
+  marketingConsent: true,
 };
 
 router.post(
@@ -81,10 +83,17 @@ router.put(
   '/profile',
   authenticateCustomer,
   asyncHandler(async (req, res) => {
-    const { name, phone, address, avatar } = req.body;
+    const { name, phone, address, avatar, taxId, marketingConsent } = req.body;
     const customer = await prisma.customer.update({
       where: { id: req.customer.id },
-      data: { name, phone, address, avatar },
+      data: {
+        ...(name !== undefined && { name }),
+        ...(phone !== undefined && { phone }),
+        ...(address !== undefined && { address }),
+        ...(avatar !== undefined && { avatar }),
+        ...(taxId !== undefined && { taxId }),
+        ...(marketingConsent !== undefined && { marketingConsent: !!marketingConsent }),
+      },
       select: customerSelect,
     });
     success(res, customer, 'Profile updated');
