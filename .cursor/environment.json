@@ -1,0 +1,22 @@
+{
+  "name": "Inventra",
+  "install": ".cursor/install.sh",
+  "start": ".cursor/start.sh",
+  "terminals": [
+    {
+      "name": "backend",
+      "command": "cd backend && npm run dev",
+      "description": "Express + Socket.IO API on http://localhost:4000 (REST base /api/v1)"
+    },
+    {
+      "name": "frontend",
+      "command": "cd frontend && npm run dev",
+      "description": "React + Vite dev server on http://localhost:5173"
+    }
+  ],
+  "ports": [
+    { "name": "frontend", "port": 5173 },
+    { "name": "backend", "port": 4000 },
+    { "name": "postgres", "port": 5432 }
+  ]
+}
