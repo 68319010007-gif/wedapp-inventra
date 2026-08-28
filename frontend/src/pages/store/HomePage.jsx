@@ -17,7 +17,7 @@ export default function HomePage() {
     Promise.all([storeApi.get('/store/products?limit=8'), storeApi.get('/store/categories')])
       .then(([prodRes, catRes]) => {
         setProducts(prodRes.data.data.items);
-        setCategories(catRes.data.data);
+        setCategories(catRes.data.data.tree || catRes.data.data.items || catRes.data.data || []);
       })
       .finally(() => setLoading(false));
   }, []);

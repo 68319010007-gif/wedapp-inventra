@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Plus, Upload, Star, Trash2 } from 'lucide-react';
-import api from '../services/api';
+import { flattenCategoryTree, buildCategoryTree } from '../utils/categoryTree';
 import { PageHeader, DataTable, LoadingState } from '../components/ui';
 import { Modal, Button, Input, Select, Textarea, ConfirmDialog, ActionButtons, Alert, SearchBar } from '../components/crud';
 import { formatCurrency } from '../utils/format';
@@ -17,6 +17,7 @@ export default function ProductsPage() {
   const { t } = useLanguage();
   const [items, setItems] = useState([]);
   const [categories, setCategories] = useState([]);
+  const [categoryTree, setCategoryTree] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [modal, setModal] = useState(null);
@@ -33,7 +34,9 @@ export default function ProductsPage() {
     Promise.all([api.get(`/products${q}`), api.get('/categories')])
       .then(([p, c]) => {
         setItems(p.data.data.items);
-        setCategories(c.data.data);
+        const items = c.data.data.items || c.data.data || [];
+        setCategories(items);
+        setCategoryTree(c.data.data.tree || buildCategoryTree(items));
       })
       .finally(() => setLoading(false));
   }, [search]);
@@ -183,7 +186,9 @@ export default function ProductsPage() {
             <Input label={t('admin.products.productName')} value={form.name} onChange={set('name')} required className="sm:col-span-2" />
             <Select label={t('admin.products.category')} value={form.categoryId} onChange={set('categoryId')}>
               <option value="">{t('admin.products.none')}</option>
-              {categories.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+              {flattenCategoryTree(categoryTree).map((c) => (
+                <option key={c.id} value={c.id}>{'\u00A0'.repeat(c.depth * 2)}{c.name}</option>
+              ))}
             </Select>
             <Input label={t('admin.products.unit')} value={form.unit} onChange={set('unit')} />
             <Input label={t('admin.products.costPrice')} type="number" step="0.01" value={form.costPrice} onChange={set('costPrice')} />

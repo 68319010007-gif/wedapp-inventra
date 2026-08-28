@@ -104,8 +104,46 @@ export default function CheckoutPage() {
     setError('');
     setLoading(true);
     try {
+      const selected = addresses.find((a) => a.id === selectedAddressId);
+      const shippingAddress = selected
+        ? {
+            label: selected.label,
+            firstName: selected.firstName,
+            lastName: selected.lastName,
+            phone: selected.phone,
+            phoneAlt: selected.phoneAlt,
+            houseNo: selected.houseNo,
+            moo: selected.moo,
+            village: selected.village,
+            floor: selected.floor,
+            room: selected.room,
+            soi: selected.soi,
+            road: selected.road,
+            postalCode: selected.postalCode,
+            subdistrict: selected.subdistrict,
+            district: selected.district,
+            province: selected.province,
+            residenceType: selected.residenceType,
+            residenceOther: selected.residenceOther,
+            hasElevator: selected.hasElevator,
+            vehicleAccess: selected.vehicleAccess,
+            lat: selected.lat,
+            lng: selected.lng,
+            mapAddress: selected.mapAddress,
+            formatted: selected.formatted || formatShippingAddress(selected),
+          }
+        : form.address
+          ? {
+              firstName: form.name,
+              phone: form.phone,
+              formatted: form.address,
+              address: form.address,
+            }
+          : null;
+
       const res = await storeApi.post('/store/checkout', {
         customer: form,
+        shippingAddress,
         items: items.map((i) => ({ productId: i.productId, quantity: i.quantity })),
         note: form.note,
       });

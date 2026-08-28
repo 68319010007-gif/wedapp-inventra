@@ -1,6 +1,7 @@
 import { Link } from 'react-router-dom';
 import { ShoppingCart } from 'lucide-react';
 import { getImageUrl, getProductPlaceholder } from '../../utils/imageUrl';
+import { getProductImage } from '../../utils/orderNote';
 import { formatCurrency } from '../../utils/format';
 import { useCart } from '../../store/CartContext';
 import { useLanguage } from '../../i18n';
@@ -8,7 +9,7 @@ import { useLanguage } from '../../i18n';
 export default function ProductCard({ product }) {
   const { addItem } = useCart();
   const { t } = useLanguage();
-  const img = getImageUrl(product.image) || getProductPlaceholder(product.name);
+  const img = getImageUrl(getProductImage(product)) || getProductPlaceholder(product.name);
   const stock = product.stock ?? product.inventoryItems?.quantity ?? 0;
 
   return (
