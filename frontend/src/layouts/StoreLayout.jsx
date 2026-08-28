@@ -4,6 +4,7 @@ import { useCart } from '../store/CartContext';
 import { useStoreAuth } from '../store/StoreAuthContext';
 import { useLanguage } from '../i18n';
 import LanguageSwitcher, { LanguageSwitcherLight } from '../components/LanguageSwitcher';
+import CategoryMegaMenu from '../components/store/CategoryMegaMenu';
 import Avatar from '../components/Avatar';
 
 export default function StoreLayout() {
@@ -28,6 +29,7 @@ export default function StoreLayout() {
           </Link>
 
           <nav className="hidden items-center gap-6 md:flex">
+            <CategoryMegaMenu />
             <NavLink to="/" end className={({ isActive }) => `text-sm font-medium ${isActive ? 'text-primary' : 'text-slate-600 hover:text-primary'}`}>
               {t('store.home')}
             </NavLink>
