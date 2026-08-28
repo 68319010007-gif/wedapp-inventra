@@ -3,9 +3,11 @@ import { Link } from 'react-router-dom';
 import { Package, X, Upload, Copy, Check, ZoomIn, ZoomOut } from 'lucide-react';
 import storeApi from '../../services/storeApi';
 import { getImageUrl, getProductPlaceholder } from '../../utils/imageUrl';
+import { getProductImage } from '../../utils/orderNote';
 import { formatCurrency, formatDateTime } from '../../utils/format';
 import { LoadingState } from '../../components/ui';
 import { Button, ConfirmDialog, Alert, Modal } from '../../components/crud';
+import ShippingAddressBlock from '../../components/store/ShippingAddressBlock';
 import { useLanguage } from '../../i18n';
 
 const statusStyles = {
@@ -184,11 +186,15 @@ export default function OrdersPage() {
                 </div>
               </div>
 
+              <div className="mt-4">
+                <ShippingAddressBlock note={order.note} compact />
+              </div>
+
               <div className="mt-4 space-y-2">
                 {order.items.map((item) => (
                   <div key={item.id} className="flex items-center gap-3 text-sm">
                     <img
-                      src={item.product?.image ? getImageUrl(item.product.image) : getProductPlaceholder(item.product?.name)}
+                      src={getImageUrl(getProductImage(item.product) || item.product?.image) || getProductPlaceholder(item.product?.name)}
                       alt=""
                       className="h-12 w-12 rounded-lg object-cover"
                     />

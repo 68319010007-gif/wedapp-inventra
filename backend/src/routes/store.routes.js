@@ -204,14 +204,21 @@ router.post(
   '/checkout',
   authenticateCustomer,
   asyncHandler(async (req, res) => {
-    const { items, note, customer } = req.body;
+    const { items, note, customer, shippingAddress } = req.body;
     if (!items?.length) throw new AppError('Items are required');
 
     const shippingLines = [];
     if (customer?.name) shippingLines.push(`Ship to: ${customer.name}`);
     if (customer?.phone) shippingLines.push(`Phone: ${customer.phone}`);
     if (customer?.address) shippingLines.push(`Address: ${customer.address}`);
-    const fullNote = [note, shippingLines.join(' | ')].filter(Boolean).join('\n');
+
+    const noteParts = [];
+    if (note?.trim()) noteParts.push(note.trim());
+    if (shippingAddress && typeof shippingAddress === 'object') {
+      noteParts.push(`---SHIPPING---\n${JSON.stringify(shippingAddress)}`);
+    }
+    if (shippingLines.length) noteParts.push(shippingLines.join(' | '));
+    const fullNote = noteParts.join('\n') || 'Online store order';
 
     const customerRecord = req.customer;
 
@@ -297,7 +304,7 @@ router.patch(
     if (!order) throw new AppError('Order not found', 404);
     if (order.status === 'CANCELLED') throw new AppError('Order is already cancelled');
     if (['SHIPPING', 'COMPLETED'].includes(order.status)) {
-      throw new AppError('This order can no longer be cancelled â it has already been shipped or completed');
+      throw new AppError('This order can no longer be cancelled Ã¢ÂÂ it has already been shipped or completed');
     }
 
     const stockChanges = [];
@@ -306,7 +313,7 @@ router.patch(
       if (shouldHaveStockDeducted(order.status)) {
         const restored = await restoreStock(tx, order.items, {
           reference: order.orderNo,
-          note: 'Order cancelled by customer â stock restored',
+          note: 'Order cancelled by customer Ã¢ÂÂ stock restored',
         });
         stockChanges.push(...restored);
       }
