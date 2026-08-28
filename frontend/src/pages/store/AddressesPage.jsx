@@ -34,6 +34,20 @@ const emptyForm = {
   isDefaultTax: false,
 };
 
+const TEXT_FIELDS = [
+  'label', 'firstName', 'lastName', 'phone', 'phoneAlt', 'houseNo', 'moo', 'village',
+  'floor', 'room', 'soi', 'road', 'postalCode', 'subdistrict', 'district', 'province',
+  'residenceType', 'residenceOther', 'vehicleAccess', 'mapAddress',
+];
+
+function addressToForm(addr) {
+  const form = { ...emptyForm, ...addr };
+  for (const key of TEXT_FIELDS) {
+    if (form[key] == null) form[key] = '';
+  }
+  return form;
+}
+
 function formatAddress(a) {
   if (a.formatted) return a.formatted;
   return [
@@ -90,13 +104,7 @@ export default function AddressesPage() {
 
   const openEdit = (addr) => {
     setEditingId(addr.id);
-    setForm({
-      ...emptyForm,
-      ...addr,
-      residenceType: addr.residenceType || '',
-      vehicleAccess: addr.vehicleAccess || '',
-      hasElevator: addr.hasElevator,
-    });
+    setForm(addressToForm(addr));
     setError('');
     setMode('form');
   };
