@@ -9,11 +9,12 @@ const {
   assertStockAvailable,
   broadcastStock,
 } = require('../utils/stock');
+const { buildCategoryTree, getDescendantIds } = require('../utils/categories');
 
 const router = express.Router();
 
 const productInclude = {
-  category: true,
+  category: { include: { parent: { include: { parent: true } } } },
   inventoryItems: true,
   images: { orderBy: { sortOrder: 'asc' } },
 };
@@ -27,10 +28,10 @@ router.get(
   '/categories',
   asyncHandler(async (req, res) => {
     const categories = await prisma.category.findMany({
-      orderBy: { name: 'asc' },
+      orderBy: [{ sortOrder: 'asc' }, { name: 'asc' }],
       include: { _count: { select: { products: true } } },
     });
-    success(res, categories);
+    success(res, { items: categories, tree: buildCategoryTree(categories) });
   })
 );
 
@@ -41,7 +42,11 @@ router.get(
     const { skip, take, page: p, limit: l } = paginate(page, limit);
 
     const where = { isActive: true };
-    if (categoryId) where.categoryId = categoryId;
+    if (categoryId) {
+      const allCategories = await prisma.category.findMany({ select: { id: true, parentId: true } });
+      const ids = getDescendantIds(categoryId, allCategories);
+      where.categoryId = { in: ids };
+    }
     if (search) {
       where.OR = [
         { name: { contains: search, mode: 'insensitive' } },
@@ -184,7 +189,7 @@ router.patch(
     if (!order) throw new AppError('Order not found', 404);
     if (order.status === 'CANCELLED') throw new AppError('Order is already cancelled');
     if (['SHIPPING', 'COMPLETED'].includes(order.status)) {
-      throw new AppError('This order can no longer be cancelled — it has already been shipped or completed');
+      throw new AppError('This order can no longer be cancelled â it has already been shipped or completed');
     }
 
     const stockChanges = [];
@@ -193,7 +198,7 @@ router.patch(
       if (shouldHaveStockDeducted(order.status)) {
         const restored = await restoreStock(tx, order.items, {
           reference: order.orderNo,
-          note: 'Order cancelled by customer — stock restored',
+          note: 'Order cancelled by customer â stock restored',
         });
         stockChanges.push(...restored);
       }
