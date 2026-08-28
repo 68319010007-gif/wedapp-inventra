@@ -55,7 +55,8 @@ router.get(
       include: {
         customer: true,
         createdBy: { select: { id: true, name: true } },
-        items: { include: { product: true } },
+        items: { include: { product: { include: { images: { orderBy: [{ isPrimary: 'desc' }, { sortOrder: 'asc' }], take: 1 } } } } },
+        payment: true,
       },
     });
     if (!order) throw new AppError('Order not found', 404);
