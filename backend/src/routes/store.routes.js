@@ -75,6 +75,114 @@ router.get(
   })
 );
 
+async function getReviewEligibility(customerId, productId) {
+  if (!customerId) return { canReview: false, reason: 'login_required' };
+  const existing = await prisma.productReview.findUnique({
+    where: { productId_customerId: { productId, customerId } },
+  });
+  if (existing) return { canReview: false, reason: 'already_reviewed', review: existing };
+
+  const purchased = await prisma.salesOrderItem.findFirst({
+    where: {
+      productId,
+      order: { customerId, status: { not: 'CANCELLED' } },
+    },
+  });
+  if (!purchased) return { canReview: false, reason: 'not_purchased' };
+  return { canReview: true };
+}
+
+router.get(
+  '/products/:id/reviews',
+  asyncHandler(async (req, res) => {
+    const product = await prisma.product.findFirst({ where: { id: req.params.id, isActive: true } });
+    if (!product) throw new AppError('Product not found', 404);
+
+    const reviews = await prisma.productReview.findMany({
+      where: { productId: product.id },
+      orderBy: { createdAt: 'desc' },
+      include: { customer: { select: { name: true } } },
+    });
+
+    const agg = await prisma.productReview.aggregate({
+      where: { productId: product.id },
+      _avg: { rating: true },
+      _count: { rating: true },
+    });
+
+    success(res, {
+      items: reviews.map((r) => ({
+        id: r.id,
+        rating: r.rating,
+        comment: r.comment,
+        createdAt: r.createdAt,
+        customerName: r.customer.name?.split(' ')[0] || 'Customer',
+      })),
+      summary: {
+        average: agg._avg.rating ? Number(agg._avg.rating.toFixed(1)) : 0,
+        count: agg._count.rating,
+      },
+    });
+  })
+);
+
+router.get(
+  '/products/:id/reviews/eligibility',
+  asyncHandler(async (req, res) => {
+    const product = await prisma.product.findFirst({ where: { id: req.params.id, isActive: true } });
+    if (!product) throw new AppError('Product not found', 404);
+
+    let customerId = null;
+    const authHeader = req.headers.authorization;
+    if (authHeader?.startsWith('Bearer ')) {
+      try {
+        const jwt = require('jsonwebtoken');
+        const config = require('../config/env');
+        const decoded = jwt.verify(authHeader.slice(7), config.jwtSecret);
+        customerId = decoded.id;
+      } catch {
+        /* ignore invalid token */
+      }
+    }
+
+    const eligibility = await getReviewEligibility(customerId, product.id);
+    success(res, eligibility);
+  })
+);
+
+router.post(
+  '/products/:id/reviews',
+  authenticateCustomer,
+  asyncHandler(async (req, res) => {
+    const { rating, comment } = req.body;
+    const product = await prisma.product.findFirst({ where: { id: req.params.id, isActive: true } });
+    if (!product) throw new AppError('Product not found', 404);
+
+    const stars = Number(rating);
+    if (!Number.isInteger(stars) || stars < 1 || stars > 5) {
+      throw new AppError('Rating must be between 1 and 5');
+    }
+
+    const eligibility = await getReviewEligibility(req.customer.id, product.id);
+    if (!eligibility.canReview) {
+      if (eligibility.reason === 'already_reviewed') throw new AppError('You have already reviewed this product', 409);
+      if (eligibility.reason === 'not_purchased') throw new AppError('You can only review products you have purchased', 403);
+      throw new AppError('Cannot submit review', 403);
+    }
+
+    const review = await prisma.productReview.create({
+      data: {
+        productId: product.id,
+        customerId: req.customer.id,
+        rating: stars,
+        comment: comment?.trim() || null,
+      },
+    });
+
+    success(res, review, 'Review submitted', 201);
+  })
+);
+
 router.get(
   '/products/:id',
   asyncHandler(async (req, res) => {
