@@ -14,11 +14,14 @@ export function LanguageProvider({ children }) {
     document.documentElement.lang = lang;
   }, []);
 
-  const t = useCallback((key) => {
+  const t = useCallback((key, vars) => {
     const keys = key.split('.');
     let val = translations[locale];
     for (const k of keys) {
       val = val?.[k];
+    }
+    if (typeof val === 'string' && vars) {
+      return val.replace(/\{(\w+)\}/g, (_, k) => (vars[k] != null ? String(vars[k]) : `{${k}}`));
     }
     return val ?? key;
   }, [locale]);
