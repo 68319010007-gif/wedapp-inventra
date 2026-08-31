@@ -7,6 +7,7 @@ import { useAuth } from '../store/AuthContext';
 import { useLanguage } from '../i18n';
 import { LanguageSwitcherLight } from './LanguageSwitcher';
 import Avatar from './Avatar';
+import BrandLogo from './BrandLogo';
 
 export default function Sidebar() {
   const { logout, user } = useAuth();
@@ -33,15 +34,11 @@ export default function Sidebar() {
     <aside className="hidden h-screen w-64 shrink-0 flex-col bg-navy text-white lg:flex">
       <div className="border-b border-white/10 px-6 py-5">
         <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/20">
-              <span className="text-lg font-bold text-primary">I</span>
-            </div>
-            <div>
-              <p className="text-lg font-semibold tracking-wide">Inven<span className="text-primary">tra</span></p>
-              <p className="text-[10px] uppercase tracking-wider text-white/50">{t('nav.adminPanel')}</p>
-            </div>
-          </div>
+          <BrandLogo
+            textClassName="text-lg font-semibold tracking-wide text-white"
+            subtitle={t('nav.adminPanel')}
+            subtitleClassName="text-[10px] uppercase tracking-wider text-white/50"
+          />
         </div>
         <div className="mt-3"><LanguageSwitcherLight /></div>
       </div>
