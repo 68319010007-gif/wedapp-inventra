@@ -6,6 +6,7 @@ import { useLanguage } from '../i18n';
 import LanguageSwitcher, { LanguageSwitcherLight } from '../components/LanguageSwitcher';
 import CategoryMegaMenu from '../components/store/CategoryMegaMenu';
 import Avatar from '../components/Avatar';
+import BrandLogo from '../components/BrandLogo';
 
 export default function StoreLayout() {
   const { totalItems } = useCart();
@@ -13,19 +14,11 @@ export default function StoreLayout() {
   const { t } = useLanguage();
 
   return (
-    <div className="min-h-screen bg-surface">
+    <div className="min-h-screen bg-surface font-sans">
       <header className="sticky top-0 z-40 border-b border-slate-200 bg-white/95 backdrop-blur">
         <div className="mx-auto flex max-w-7xl items-center justify-between gap-4 px-4 py-4 lg:px-8">
-          <Link to="/" className="flex items-center gap-2">
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-navy">
-              <span className="text-lg font-bold text-primary">I</span>
-            </div>
-            <div>
-              <p className="text-lg font-semibold text-navy">
-                Inven<span className="text-primary">tra</span>
-              </p>
-              <p className="hidden text-[10px] uppercase tracking-wider text-muted sm:block">{t('store.buildingStore')}</p>
-            </div>
+          <Link to="/" className="shrink-0">
+            <BrandLogo subtitle={t('store.buildingStore')} subtitleClassName="hidden text-[10px] uppercase tracking-wider text-muted sm:block" />
           </Link>
 
           <nav className="hidden items-center gap-6 md:flex">

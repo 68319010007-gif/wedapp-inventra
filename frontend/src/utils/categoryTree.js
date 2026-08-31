@@ -49,3 +49,19 @@ export function getCategoryPathFromProduct(category) {
   }
   return path;
 }
+
+export function findCategoryNode(categoryId, tree) {
+  if (!categoryId) return null;
+  for (const node of tree) {
+    if (node.id === categoryId) return node;
+    const found = findCategoryNode(categoryId, node.children || []);
+    if (found) return found;
+  }
+  return null;
+}
+
+export function getDirectChildren(categoryId, categories) {
+  return categories
+    .filter((c) => c.parentId === categoryId)
+    .sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0) || a.name.localeCompare(b.name, 'th'));
+}
