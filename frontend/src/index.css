@@ -1,42 +1,20 @@
 @import "tailwindcss";
 
 @theme {
-  --color-navy: #1a2332;
-  --color-navy-light: #243044;
-  --color-primary: #2563eb;
-  --color-primary-dark: #1d4ed8;
-  --color-cyan: #06b6d4;
-  --color-surface: #f1f5f9;
-  --color-muted: #64748b;
+  --color-navy: #071714;
+  --color-navy-light: #102b27;
+  --color-primary: #169b68;
+  --color-primary-dark: #0b744d;
+  --color-cyan: #45d6a4;
+  --color-surface: #f4f8f7;
+  --color-muted: #60736d;
   --font-sans: "FC Vision", sans-serif;
 }
 
 @font-face {
   font-family: "FC Vision";
-  src:
-    url("/fonts/FCVision-Regular.woff2") format("woff2"),
-    url("/fonts/FCVision-Regular.woff") format("woff");
-  font-weight: 400;
-  font-style: normal;
-  font-display: swap;
-}
-
-@font-face {
-  font-family: "FC Vision";
-  src:
-    url("/fonts/FCVision-Medium.woff2") format("woff2"),
-    url("/fonts/FCVision-Medium.woff") format("woff");
-  font-weight: 500;
-  font-style: normal;
-  font-display: swap;
-}
-
-@font-face {
-  font-family: "FC Vision";
-  src:
-    url("/fonts/FCVision-Bold.woff2") format("woff2"),
-    url("/fonts/FCVision-Bold.woff") format("woff");
-  font-weight: 700;
+  src: url("/fonts/FCVision.otf") format("opentype");
+  font-weight: 100 900;
   font-style: normal;
   font-display: swap;
 }
@@ -54,8 +32,15 @@ body {
   margin: 0;
   font-family: inherit;
   background: var(--color-surface);
-  color: #0f172a;
+  color: #071714;
 }
+
+::selection {
+  background: #169b68;
+  color: white;
+}
+
+button, a { -webkit-tap-highlight-color: transparent; }
 
 #root {
   min-height: 100vh;
