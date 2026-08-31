@@ -25,7 +25,7 @@ router.post(
   '/',
   authorize('ADMIN', 'MANAGER'),
   asyncHandler(async (req, res) => {
-    const { name, description, parentId, sortOrder } = req.body;
+    const { name, description, longDescription, imageUrl, parentId, sortOrder } = req.body;
     if (!name?.trim()) throw new AppError('Name is required');
 
     if (parentId) {
@@ -37,6 +37,8 @@ router.post(
       data: {
         name: name.trim(),
         description: description?.trim() || null,
+        longDescription: longDescription?.trim() || null,
+        imageUrl: imageUrl?.trim() || null,
         parentId: parentId || null,
         sortOrder: sortOrder != null && sortOrder !== '' ? Number(sortOrder) || 0 : 0,
       },
@@ -49,7 +51,7 @@ router.put(
   '/:id',
   authorize('ADMIN', 'MANAGER'),
   asyncHandler(async (req, res) => {
-    const { name, description, parentId, sortOrder } = req.body;
+    const { name, description, longDescription, imageUrl, parentId, sortOrder } = req.body;
     if (parentId === req.params.id) throw new AppError('Category cannot be its own parent', 400);
 
     if (parentId) {
@@ -60,6 +62,8 @@ router.put(
     const data = {};
     if (name !== undefined) data.name = name.trim();
     if (description !== undefined) data.description = description?.trim() || null;
+    if (longDescription !== undefined) data.longDescription = longDescription?.trim() || null;
+    if (imageUrl !== undefined) data.imageUrl = imageUrl?.trim() || null;
     if (parentId !== undefined) data.parentId = parentId || null;
     if (sortOrder !== undefined) data.sortOrder = Number(sortOrder) || 0;
 
