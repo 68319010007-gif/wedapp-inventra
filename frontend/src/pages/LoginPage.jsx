@@ -27,10 +27,11 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-navy px-4">
+    <div className="flex min-h-screen items-center justify-center bg-navy px-4 font-sans">
       <div className="w-full max-w-md rounded-3xl bg-white p-8 shadow-2xl">
-        <div className="mb-8 text-center">
-          <p className="text-3xl font-bold text-navy">
+        <div className="mb-8 flex flex-col items-center text-center">
+          <img src="/inventra-logo.png" alt="Inventra" className="mb-4 h-16 w-auto object-contain" />
+          <p className="text-2xl font-bold text-navy">
             Inven<span className="text-primary">tra</span>
           </p>
           <p className="mt-2 text-sm text-muted">Admin Dashboard</p>
