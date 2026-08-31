@@ -33,13 +33,13 @@ export default function Sidebar() {
   return (
     <aside className="hidden h-screen w-64 shrink-0 flex-col bg-navy text-white lg:flex">
       <div className="border-b border-white/10 px-6 py-5">
-        <div className="flex items-center justify-between">
-          <BrandLogo
-            textClassName="text-lg font-semibold tracking-wide text-white"
-            subtitle={t('nav.adminPanel')}
-            subtitleClassName="text-[10px] uppercase tracking-wider text-white/50"
-          />
-        </div>
+        <BrandLogo
+          layout="stack"
+          showText={false}
+          imageClassName="h-10 w-auto"
+          subtitle={t('nav.adminPanel')}
+          subtitleClassName="text-[10px] uppercase tracking-wider text-white/50"
+        />
         <div className="mt-3"><LanguageSwitcherLight /></div>
       </div>
 
