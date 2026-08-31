@@ -3,6 +3,7 @@ import { LanguageProvider } from './i18n';
 import { AuthProvider } from './store/AuthContext';
 import { StoreAuthProvider } from './store/StoreAuthContext';
 import { CartProvider } from './store/CartContext';
+import { SiteSettingsProvider } from './store/SiteSettingsContext';
 import ProtectedRoute from './components/ProtectedRoute';
 import StoreProtectedRoute from './components/StoreProtectedRoute';
 import DashboardLayout from './layouts/DashboardLayout';
@@ -38,6 +39,7 @@ import OrdersPage from './pages/store/OrdersPage';
 export default function App() {
   return (
     <LanguageProvider>
+      <SiteSettingsProvider>
       <AuthProvider>
         <StoreAuthProvider>
           <CartProvider>
@@ -95,6 +97,7 @@ export default function App() {
           </CartProvider>
         </StoreAuthProvider>
       </AuthProvider>
+      </SiteSettingsProvider>
     </LanguageProvider>
   );
 }
