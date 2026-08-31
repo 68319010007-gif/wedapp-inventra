@@ -41,14 +41,12 @@ export default function CategoryMegaMenu() {
     [tree, activeRootId]
   );
 
-  if (!tree.length) return null;
-
   return (
-    <div ref={rootRef} className="relative hidden md:block">
+    <div ref={rootRef} className="relative">
       <button
         type="button"
         aria-expanded={open}
-        className={`inline-flex items-center gap-2 text-sm font-medium transition ${open ? 'text-primary' : 'text-slate-600 hover:text-primary'}`}
+        className={`inline-flex items-center gap-2 rounded-full border px-4 py-2 text-sm font-semibold transition ${open ? 'border-primary bg-primary text-white' : 'border-[#cfdad6] bg-white text-navy hover:border-primary hover:text-primary'}`}
         onClick={() => setOpen((v) => !v)}
       >
         <Grid3X3 size={16} />
@@ -56,9 +54,9 @@ export default function CategoryMegaMenu() {
         <ChevronDown size={14} className={`transition ${open ? 'rotate-180' : ''}`} />
       </button>
 
-      {open && (
+      {open && tree.length > 0 && (
         <div className="absolute left-0 top-full z-50 pt-1">
-          <div className="w-[min(920px,calc(100vw-2rem))] overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl">
+          <div className="w-[min(920px,calc(100vw-2rem))] overflow-hidden rounded-2xl border border-[#dbe4e1] bg-white shadow-2xl">
             <div className="grid grid-cols-[240px_1fr] min-h-[280px]">
               <div className="border-r border-slate-100 bg-slate-50 py-2">
                 {tree.map((root) => (

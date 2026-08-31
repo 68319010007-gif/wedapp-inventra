@@ -10,6 +10,7 @@ const {
   broadcastStock,
 } = require('../utils/stock');
 const { buildCategoryTree, getDescendantIds } = require('../utils/categories');
+const { buildPublicSettings } = require('../utils/siteSettings');
 
 const router = express.Router();
 
@@ -23,6 +24,19 @@ const orderInclude = {
   items: { include: { product: { select: { name: true, sku: true, image: true } } } },
   payment: true,
 };
+
+router.get(
+  '/settings',
+  asyncHandler(async (_req, res) => {
+    const settings = await prisma.setting.findMany({
+      where: {
+        key: { in: ['app_name', 'app_tagline', 'app_logo', 'store_tagline', 'hero_slides'] },
+      },
+    });
+    const map = settings.reduce((acc, s) => ({ ...acc, [s.key]: s.value }), {});
+    success(res, buildPublicSettings(map));
+  })
+);
 
 router.get(
   '/categories',

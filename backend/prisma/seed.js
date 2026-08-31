@@ -1,5 +1,6 @@
 const { PrismaClient } = require('@prisma/client');
 const bcrypt = require('bcryptjs');
+const { DEFAULT_HERO_SLIDES } = require('../src/utils/siteSettings');
 const prisma = new PrismaClient();
 
 async function upsertCategory(name, { description, longDescription, imageUrl, parentId, sortOrder = 0 } = {}) {
@@ -127,6 +128,21 @@ async function main() {
     where: { key: 'app_tagline' },
     update: {},
     create: { key: 'app_tagline', value: 'Smart Inventory & Sales Management System' },
+  });
+  await prisma.setting.upsert({
+    where: { key: 'app_logo' },
+    update: {},
+    create: { key: 'app_logo', value: '' },
+  });
+  await prisma.setting.upsert({
+    where: { key: 'store_tagline' },
+    update: {},
+    create: { key: 'store_tagline', value: 'Building Materials Store' },
+  });
+  await prisma.setting.upsert({
+    where: { key: 'hero_slides' },
+    update: {},
+    create: { key: 'hero_slides', value: JSON.stringify(DEFAULT_HERO_SLIDES) },
   });
 
   console.log('Seed completed:', { admin: admin.email, products: products.length, customer: customer.code, supplier: supplier.code });
