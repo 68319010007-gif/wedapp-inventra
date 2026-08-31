@@ -61,7 +61,7 @@ export default function HomePage() {
                 )}
               </div>
               <div className="flex items-center justify-between p-4 lg:p-5">
-                <div><p className="font-semibold text-navy">{cat.name}</p><p className="mt-1 text-xs text-muted">{cat._count?.products || 0} {t('store.products')}</p></div>
+                <div><p className="font-semibold text-navy">{cat.name}</p><p className="mt-1 text-xs text-muted">{cat.productCount ?? cat._count?.products ?? 0} {t('store.products')}</p></div>
                 <ArrowRight size={18} className="text-muted transition group-hover:translate-x-1 group-hover:text-primary" />
               </div>
             </Link>

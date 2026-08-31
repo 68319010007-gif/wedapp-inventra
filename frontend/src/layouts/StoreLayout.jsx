@@ -1,5 +1,5 @@
 import { Link, NavLink, Outlet } from 'react-router-dom';
-import { ShoppingCart, Search, LayoutDashboard, ArrowUpRight, Mail, Phone } from 'lucide-react';
+import { ShoppingCart, Search, LayoutDashboard, ArrowUpRight, Mail, Phone, Instagram, Facebook } from 'lucide-react';
 import { useCart } from '../store/CartContext';
 import { useStoreAuth } from '../store/StoreAuthContext';
 import { useLanguage } from '../i18n';
@@ -22,7 +22,7 @@ export default function StoreLayout() {
         <div className="mx-auto flex max-w-7xl items-center justify-between gap-4 px-4 py-3 lg:px-8 lg:py-4">
           <Link to="/" className="shrink-0">
             <BrandLogo
-              logoUrl="/inventra-logo-v5.png"
+              variant="store"
               layout="stack"
               showText={false}
               subtitle={storeTagline || t('store.buildingStore')}
@@ -92,7 +92,7 @@ export default function StoreLayout() {
         <div className="mx-auto max-w-7xl px-4 py-14 lg:px-8 lg:py-20">
           <div className="grid gap-10 md:grid-cols-[1.3fr_.8fr_1fr]">
             <div>
-              <div className="inline-flex rounded-xl bg-white px-4 py-3"><BrandLogo logoUrl="/inventra-logo-v5.png" layout="stack" showText={false} imageClassName="h-10 w-auto" subtitleClassName="hidden" /></div>
+              <div className="inline-flex rounded-xl bg-white px-4 py-3"><BrandLogo variant="store" layout="stack" showText={false} imageClassName="h-10 w-auto" subtitleClassName="hidden" /></div>
               <p className="mt-5 max-w-sm text-sm leading-6 text-white/55">แหล่งรวมวัสดุก่อสร้างสำหรับช่าง ผู้รับเหมา และเจ้าของบ้าน พร้อมข้อมูลสต็อกที่ช่วยให้วางแผนงานได้ง่ายขึ้น</p>
               <Link to="/shop" className="mt-6 inline-flex items-center gap-2 text-sm font-semibold text-[#49d7a8]">เลือกซื้อสินค้า <ArrowUpRight size={16} /></Link>
             </div>
@@ -107,7 +107,13 @@ export default function StoreLayout() {
             </div>
             <div>
               <p className="text-sm font-semibold uppercase tracking-[.15em] text-white/85">{t('store.contact')}</p>
-              <div className="mt-5 space-y-3 text-sm text-white/55"><p className="flex items-center gap-3"><Mail size={16} /> support@inventra.com</p><p className="flex items-center gap-3"><Phone size={16} /> 02-123-4567</p></div>
+              <div className="mt-5 space-y-3 text-sm text-white/55">
+              <p className="flex items-center gap-3"><Mail size={16} /> support@inventra.com</p>
+              <p className="flex items-center gap-3"><Mail size={16} /> 6831901007@loeitech.ac.th</p>
+              <p className="flex items-center gap-3"><Phone size={16} /> 02-123-4567</p>
+              <p className="flex items-center gap-3"><Instagram size={16} /> @cchai_wat</p>
+              <p className="flex items-center gap-3"><Facebook size={16} /> @ชัยวัฒน์ ฮาดนิล</p>
+              </div>
             </div>
           </div>
           <div className="mt-12 flex flex-col justify-between gap-3 border-t border-white/10 pt-6 text-xs text-white/35 sm:flex-row"><p>© 2026 INVENTRA. All rights reserved.</p><p>สร้างงานให้เดินหน้าได้ทุกวัน</p></div>
