@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Plus, Upload, Star, Trash2 } from 'lucide-react';
+import api from '../services/api';
 import { flattenCategoryTree, buildCategoryTree } from '../utils/categoryTree';
 import { PageHeader, DataTable, LoadingState } from '../components/ui';
 import { Modal, Button, Input, Select, Textarea, ConfirmDialog, ActionButtons, Alert, SearchBar } from '../components/crud';
