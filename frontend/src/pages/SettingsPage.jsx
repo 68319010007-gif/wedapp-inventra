@@ -5,7 +5,7 @@ import { useLanguage } from '../i18n';
 import { PageHeader, LoadingState } from '../components/ui';
 import { Button, Input, Textarea, Alert } from '../components/crud';
 import { getImageUrl } from '../utils/imageUrl';
-import { DEFAULT_HERO_SLIDES, DEFAULT_LOGO, useSiteSettings } from '../store/SiteSettingsContext';
+import { DEFAULT_HERO_SLIDES, DEFAULT_LOGO, DEFAULT_ADMIN_LOGO, useSiteSettings } from '../store/SiteSettingsContext';
 
 const emptySlide = () => ({ image: '', eyebrow: '', title: '', subtitle: '' });
 
@@ -51,6 +51,8 @@ export default function SettingsPage() {
     const url = res.data.data.url;
     if (target === 'logo') {
       setSettings((prev) => ({ ...prev, app_logo: url }));
+    } else if (target === 'adminLogo') {
+      setSettings((prev) => ({ ...prev, admin_logo: url }));
     } else {
       setHeroSlides((prev) =>
         prev.map((slide, i) => (i === target ? { ...slide, image: url } : slide))
@@ -105,7 +107,8 @@ export default function SettingsPage() {
     }
   };
 
-  const logoPreview = settings.app_logo ? getImageUrl(settings.app_logo) : DEFAULT_LOGO;
+  const storeLogoPreview = settings.app_logo ? getImageUrl(settings.app_logo) : DEFAULT_LOGO;
+  const adminLogoPreview = settings.admin_logo ? getImageUrl(settings.admin_logo) : DEFAULT_ADMIN_LOGO;
 
   if (loading) return <LoadingState />;
 
@@ -131,11 +134,11 @@ export default function SettingsPage() {
         </section>
 
         <section className="max-w-3xl space-y-4 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-          <h2 className="text-lg font-semibold text-slate-900">{t('admin.settings.branding')}</h2>
-          <p className="text-sm text-muted">{t('admin.settings.logoHint')}</p>
+          <h2 className="text-lg font-semibold text-slate-900">{t('admin.settings.storeBranding')}</h2>
+          <p className="text-sm text-muted">{t('admin.settings.storeLogoHint')}</p>
           <div className="flex flex-wrap items-start gap-4">
             <div className="flex h-24 w-40 items-center justify-center rounded-xl border border-slate-200 bg-slate-50 p-3">
-              <img src={logoPreview} alt="Logo" className="max-h-full max-w-full object-contain" />
+              <img src={storeLogoPreview} alt="Store logo" className="max-h-full max-w-full object-contain" />
             </div>
             <div className="flex flex-wrap gap-2">
               <label className="inline-flex cursor-pointer items-center gap-2 rounded-xl border border-slate-200 px-4 py-2 text-sm font-medium hover:bg-slate-50">
@@ -155,6 +158,26 @@ export default function SettingsPage() {
             placeholder={t('admin.settings.storeTaglinePlaceholder')}
           />
           <p className="text-sm text-muted">{t('admin.settings.storeTaglineHint')}</p>
+        </section>
+
+        <section className="max-w-3xl space-y-4 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+          <h2 className="text-lg font-semibold text-slate-900">{t('admin.settings.adminBranding')}</h2>
+          <p className="text-sm text-muted">{t('admin.settings.adminLogoHint')}</p>
+          <div className="flex flex-wrap items-start gap-4">
+            <div className="flex h-24 w-40 items-center justify-center rounded-xl border border-slate-200 bg-slate-50 p-3">
+              <img src={adminLogoPreview} alt="Admin logo" className="max-h-full max-w-full object-contain" />
+            </div>
+            <div className="flex flex-wrap gap-2">
+              <label className="inline-flex cursor-pointer items-center gap-2 rounded-xl border border-slate-200 px-4 py-2 text-sm font-medium hover:bg-slate-50">
+                <Upload size={16} />
+                {uploading === 'adminLogo' ? t('common.uploading') : t('admin.settings.uploadAdminLogo')}
+                <input type="file" accept="image/*" className="hidden" onChange={(e) => handleUpload(e, 'adminLogo')} disabled={!!uploading} />
+              </label>
+              <Button type="button" variant="ghost" onClick={() => setSettings((prev) => ({ ...prev, admin_logo: '' }))}>
+                {t('admin.settings.resetAdminLogo')}
+              </Button>
+            </div>
+          </div>
         </section>
 
         <section className="max-w-4xl space-y-4 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">

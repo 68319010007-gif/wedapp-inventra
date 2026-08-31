@@ -9,7 +9,7 @@ const {
   assertStockAvailable,
   broadcastStock,
 } = require('../utils/stock');
-const { buildCategoryTree, getDescendantIds } = require('../utils/categories');
+const { buildCategoryTree, getDescendantIds, attachProductCounts } = require('../utils/categories');
 const { buildPublicSettings } = require('../utils/siteSettings');
 
 const router = express.Router();
@@ -30,7 +30,7 @@ router.get(
   asyncHandler(async (_req, res) => {
     const settings = await prisma.setting.findMany({
       where: {
-        key: { in: ['app_name', 'app_tagline', 'app_logo', 'store_tagline', 'hero_slides'] },
+        key: { in: ['app_name', 'app_tagline', 'app_logo', 'admin_logo', 'store_tagline', 'hero_slides'] },
       },
     });
     const map = settings.reduce((acc, s) => ({ ...acc, [s.key]: s.value }), {});
@@ -41,10 +41,12 @@ router.get(
 router.get(
   '/categories',
   asyncHandler(async (req, res) => {
-    const categories = await prisma.category.findMany({
-      orderBy: [{ sortOrder: 'asc' }, { name: 'asc' }],
-      include: { _count: { select: { products: true } } },
-    });
+    const categories = attachProductCounts(
+      await prisma.category.findMany({
+        orderBy: [{ sortOrder: 'asc' }, { name: 'asc' }],
+        include: { _count: { select: { products: true } } },
+      })
+    );
     success(res, { items: categories, tree: buildCategoryTree(categories) });
   })
 );

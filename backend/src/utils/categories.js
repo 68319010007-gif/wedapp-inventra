@@ -39,6 +39,21 @@ function getDescendantIds(categoryId, categories) {
   return ids;
 }
 
+function getTotalProductCount(categoryId, categories) {
+  const byId = new Map(categories.map((c) => [c.id, c]));
+  return getDescendantIds(categoryId, categories).reduce(
+    (sum, id) => sum + (byId.get(id)?._count?.products ?? 0),
+    0
+  );
+}
+
+function attachProductCounts(categories) {
+  return categories.map((cat) => ({
+    ...cat,
+    productCount: getTotalProductCount(cat.id, categories),
+  }));
+}
+
 function getCategoryPath(categoryId, categories) {
   const byId = new Map(categories.map((c) => [c.id, c]));
   const path = [];
@@ -50,4 +65,10 @@ function getCategoryPath(categoryId, categories) {
   return path;
 }
 
-module.exports = { buildCategoryTree, getDescendantIds, getCategoryPath };
+module.exports = {
+  buildCategoryTree,
+  getDescendantIds,
+  getCategoryPath,
+  getTotalProductCount,
+  attachProductCounts,
+};

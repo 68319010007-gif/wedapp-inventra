@@ -32,6 +32,7 @@ export default function LoginPage() {
       <div className="w-full max-w-md rounded-3xl bg-white p-8 shadow-2xl">
         <div className="mb-8 flex flex-col items-center text-center">
           <BrandLogo
+            variant="admin"
             imageClassName="h-16 w-auto"
             showSubtitle={false}
             className="flex-col items-center gap-3"

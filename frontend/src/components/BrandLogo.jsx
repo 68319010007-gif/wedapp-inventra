@@ -23,8 +23,10 @@ export default function BrandLogo({
   textClassName = 'text-lg font-semibold text-navy',
   subtitleClassName = 'text-[10px] uppercase tracking-wider text-muted',
   logoUrl: logoUrlProp,
+  variant = 'store',
 }) {
-  const { logoUrl: contextLogo, appName, appTagline } = useSiteSettings();
+  const { logoUrl: storeLogo, adminLogoUrl, appName, appTagline } = useSiteSettings();
+  const contextLogo = variant === 'admin' ? adminLogoUrl : storeLogo;
   const logoUrl = logoUrlProp || contextLogo;
   const displayTitle = title ?? appName;
   const displaySubtitle =

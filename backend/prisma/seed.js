@@ -135,6 +135,11 @@ async function main() {
     create: { key: 'app_logo', value: '' },
   });
   await prisma.setting.upsert({
+    where: { key: 'admin_logo' },
+    update: {},
+    create: { key: 'admin_logo', value: '' },
+  });
+  await prisma.setting.upsert({
     where: { key: 'store_tagline' },
     update: {},
     create: { key: 'store_tagline', value: 'Building Materials Store' },

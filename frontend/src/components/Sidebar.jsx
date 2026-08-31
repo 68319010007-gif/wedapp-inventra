@@ -34,6 +34,7 @@ export default function Sidebar() {
     <aside className="hidden h-screen w-64 shrink-0 flex-col bg-navy text-white lg:flex">
       <div className="border-b border-white/10 px-6 py-5">
         <BrandLogo
+          variant="admin"
           layout="stack"
           showText={false}
           imageClassName="h-10 w-auto"

@@ -43,6 +43,7 @@ function buildPublicSettings(settingsMap) {
     app_name: settingsMap.app_name || 'Inventra',
     app_tagline: settingsMap.app_tagline || '',
     app_logo: settingsMap.app_logo?.trim() || '',
+    admin_logo: settingsMap.admin_logo?.trim() || '',
     store_tagline: settingsMap.store_tagline?.trim() || '',
     hero_slides: parseHeroSlides(settingsMap.hero_slides),
   };

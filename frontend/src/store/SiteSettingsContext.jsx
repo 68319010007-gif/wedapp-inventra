@@ -3,6 +3,7 @@ import storeApi from '../services/storeApi';
 import { getImageUrl } from '../utils/imageUrl';
 
 const DEFAULT_LOGO = '/inventra-logo.png';
+const DEFAULT_ADMIN_LOGO = '/inventra-logo-admin.png';
 
 const DEFAULT_HERO_SLIDES = [
   {
@@ -27,6 +28,7 @@ const DEFAULT_HERO_SLIDES = [
 
 const SiteSettingsContext = createContext({
   logoUrl: DEFAULT_LOGO,
+  adminLogoUrl: DEFAULT_ADMIN_LOGO,
   heroSlides: DEFAULT_HERO_SLIDES,
   appName: 'Inventra',
   storeTagline: '',
@@ -34,9 +36,9 @@ const SiteSettingsContext = createContext({
   refresh: () => {},
 });
 
-function resolveLogoUrl(path) {
-  if (!path?.trim()) return DEFAULT_LOGO;
-  return getImageUrl(path) || DEFAULT_LOGO;
+function resolveLogoUrl(path, fallback = DEFAULT_LOGO) {
+  if (!path?.trim()) return fallback;
+  return getImageUrl(path) || fallback;
 }
 
 function resolveSlideImage(image) {
@@ -49,6 +51,7 @@ export function SiteSettingsProvider({ children }) {
     app_name: 'Inventra',
     app_tagline: '',
     app_logo: '',
+    admin_logo: '',
     store_tagline: '',
     hero_slides: DEFAULT_HERO_SLIDES,
   });
@@ -67,6 +70,10 @@ export function SiteSettingsProvider({ children }) {
   }, [load]);
 
   const logoUrl = useMemo(() => resolveLogoUrl(settings.app_logo), [settings.app_logo]);
+  const adminLogoUrl = useMemo(
+    () => resolveLogoUrl(settings.admin_logo, DEFAULT_ADMIN_LOGO),
+    [settings.admin_logo]
+  );
 
   const heroSlides = useMemo(
     () =>
@@ -91,6 +98,7 @@ export function SiteSettingsProvider({ children }) {
   const value = useMemo(
     () => ({
       logoUrl,
+      adminLogoUrl,
       heroSlides,
       appName: settings.app_name || 'Inventra',
       appTagline: settings.app_tagline || '',
@@ -98,7 +106,7 @@ export function SiteSettingsProvider({ children }) {
       loading,
       refresh: load,
     }),
-    [logoUrl, heroSlides, settings.app_name, settings.app_tagline, settings.store_tagline, loading, load]
+    [logoUrl, adminLogoUrl, heroSlides, settings.app_name, settings.app_tagline, settings.store_tagline, loading, load]
   );
 
   return <SiteSettingsContext.Provider value={value}>{children}</SiteSettingsContext.Provider>;
@@ -108,4 +116,4 @@ export function useSiteSettings() {
   return useContext(SiteSettingsContext);
 }
 
-export { DEFAULT_LOGO, DEFAULT_HERO_SLIDES };
+export { DEFAULT_LOGO, DEFAULT_ADMIN_LOGO, DEFAULT_HERO_SLIDES };
