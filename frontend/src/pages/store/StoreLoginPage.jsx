@@ -4,6 +4,7 @@ import { useStoreAuth } from '../../store/StoreAuthContext';
 import { useLanguage } from '../../i18n';
 import { LanguageSwitcherLight } from '../../components/LanguageSwitcher';
 import { Input, Button, Alert } from '../../components/crud';
+import BrandLogo from '../../components/BrandLogo';
 
 export default function StoreLoginPage() {
   const { login, isAuthenticated } = useStoreAuth();
@@ -36,9 +37,12 @@ export default function StoreLoginPage() {
   return (
     <div className="flex min-h-[70vh] items-center justify-center px-4 py-12">
       <div className="w-full max-w-md rounded-3xl border border-slate-200 bg-white p-8 shadow-xl">
-        <div className="mb-6 flex items-center justify-between">
-          <h1 className="text-2xl font-bold text-navy">{t('store.login')}</h1>
-          <LanguageSwitcherLight />
+        <div className="mb-6 flex flex-col gap-4">
+          <BrandLogo imageClassName="h-12 w-auto" showText={false} />
+          <div className="flex items-center justify-between">
+            <h1 className="text-2xl font-bold text-navy">{t('store.login')}</h1>
+            <LanguageSwitcherLight />
+          </div>
         </div>
         <form onSubmit={handleSubmit} className="space-y-4">
           <Alert message={error} />

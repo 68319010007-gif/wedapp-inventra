@@ -13,4 +13,4 @@ RUN mkdir -p uploads
 
 EXPOSE 4000
 
-CMD ["sh", "-c", "npx prisma migrate deploy && npx prisma db seed && npm start"]
+CMD ["sh", "-c", "npx prisma generate && npx prisma migrate deploy && npx prisma db seed && npm run dev"]

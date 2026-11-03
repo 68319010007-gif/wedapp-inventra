@@ -67,13 +67,14 @@ export function Button({ children, variant = 'primary', type = 'button', loading
   );
 }
 
-export function Input({ label, error, className = '', ...props }) {
+export function Input({ label, error, className = '', value, ...props }) {
   return (
     <div className={className}>
       {label && <label className="mb-1 block text-sm font-medium text-slate-700">{label}</label>}
       <input
         className={`w-full rounded-xl border px-4 py-2.5 text-sm outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20 ${error ? 'border-red-300' : 'border-slate-200'}`}
         {...props}
+        value={value ?? ''}
       />
       {error && <p className="mt-1 text-xs text-red-500">{error}</p>}
     </div>

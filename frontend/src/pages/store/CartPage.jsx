@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Minus, Plus, Trash2, ShoppingBag } from 'lucide-react';
 import { useCart } from '../../store/CartContext';
@@ -9,6 +10,32 @@ import { useLanguage } from '../../i18n';
 export default function CartPage() {
   const { items, updateQty, removeItem, subtotal, totalItems } = useCart();
   const { t } = useLanguage();
+  const [qtyDraft, setQtyDraft] = useState({});
+
+  const displayQty = (item) =>
+    qtyDraft[item.productId] !== undefined ? qtyDraft[item.productId] : String(item.quantity);
+
+  const commitQty = (item) => {
+    const raw = qtyDraft[item.productId];
+    if (raw === undefined) return;
+
+    const parsed = parseInt(raw, 10);
+    if (!Number.isFinite(parsed) || parsed <= 0) {
+      setQtyDraft((prev) => {
+        const next = { ...prev };
+        delete next[item.productId];
+        return next;
+      });
+      return;
+    }
+
+    updateQty(item.productId, parsed);
+    setQtyDraft((prev) => {
+      const next = { ...prev };
+      delete next[item.productId];
+      return next;
+    });
+  };
 
   if (items.length === 0) {
     return (
@@ -48,11 +75,33 @@ export default function CartPage() {
                 </div>
                 <div className="mt-auto flex items-center justify-between">
                   <div className="flex items-center rounded-lg border border-slate-200">
-                    <button onClick={() => updateQty(item.productId, item.quantity - 1)} className="p-2">
+                    <button
+                      type="button"
+                      onClick={() => updateQty(item.productId, item.quantity - 1)}
+                      className="p-2 hover:bg-slate-50"
+                      aria-label="-"
+                    >
                       <Minus size={14} />
                     </button>
-                    <span className="w-8 text-center text-sm">{item.quantity}</span>
-                    <button onClick={() => updateQty(item.productId, item.quantity + 1)} className="p-2">
+                    <input
+                      type="number"
+                      min={1}
+                      max={item.stock || 999}
+                      value={displayQty(item)}
+                      onChange={(e) =>
+                        setQtyDraft((prev) => ({ ...prev, [item.productId]: e.target.value }))
+                      }
+                      onBlur={() => commitQty(item)}
+                      onKeyDown={(e) => e.key === 'Enter' && e.currentTarget.blur()}
+                      className="w-14 border-x border-slate-200 py-2 text-center text-sm outline-none [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none focus:bg-slate-50"
+                      aria-label={t('store.quantity')}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => updateQty(item.productId, item.quantity + 1)}
+                      className="p-2 hover:bg-slate-50"
+                      aria-label="+"
+                    >
                       <Plus size={14} />
                     </button>
                   </div>

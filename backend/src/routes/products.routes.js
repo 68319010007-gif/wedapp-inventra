@@ -16,6 +16,48 @@ const productInclude = {
   images: { orderBy: { sortOrder: 'asc' } },
 };
 
+function normalizeBarcode(value) {
+  if (value == null || value === '') return null;
+  const trimmed = String(value).trim();
+  return trimmed || null;
+}
+
+function parseProductBody(body, { forCreate = false } = {}) {
+  const { sku, name, categoryId, unit, costPrice, sellPrice, minStock, barcode, description, isActive, image } = body;
+  const data = {};
+
+  if (forCreate) {
+    if (!sku?.trim() || !name?.trim()) throw new AppError('SKU and name are required');
+    data.sku = sku.trim();
+    data.name = name.trim();
+  } else {
+    if (sku !== undefined) data.sku = sku?.trim();
+    if (name !== undefined) data.name = name?.trim();
+  }
+
+  if (categoryId !== undefined) data.categoryId = categoryId || null;
+  if (unit !== undefined) data.unit = unit?.trim() || 'pcs';
+  if (costPrice !== undefined) data.costPrice = costPrice;
+  if (sellPrice !== undefined) data.sellPrice = sellPrice;
+  if (minStock !== undefined) data.minStock = minStock;
+  if (barcode !== undefined) data.barcode = normalizeBarcode(barcode);
+  if (description !== undefined) data.description = description?.trim() || null;
+  if (isActive !== undefined) data.isActive = isActive;
+  if (image !== undefined) data.image = image || null;
+
+  return data;
+}
+
+function handleProductWriteError(err) {
+  if (err.code === 'P2002') {
+    const target = err.meta?.target || [];
+    if (target.includes('sku')) throw new AppError('SKU already exists', 409);
+    if (target.includes('barcode')) throw new AppError('Barcode already exists', 409);
+    throw new AppError('Duplicate product data', 409);
+  }
+  throw err;
+}
+
 router.get(
   '/',
   asyncHandler(async (req, res) => {
@@ -145,16 +187,18 @@ router.post(
   '/',
   authorize('ADMIN', 'MANAGER', 'STAFF'),
   asyncHandler(async (req, res) => {
-    const { sku, name, categoryId, unit, costPrice, sellPrice, minStock, barcode, description } = req.body;
-    if (!sku || !name) throw new AppError('SKU and name are required');
+    const data = parseProductBody(req.body, { forCreate: true });
 
-    const product = await prisma.$transaction(async (tx) => {
-      const created = await tx.product.create({
-        data: { sku, name, categoryId, unit, costPrice, sellPrice, minStock, barcode, description },
+    let product;
+    try {
+      product = await prisma.$transaction(async (tx) => {
+        const created = await tx.product.create({ data });
+        await tx.inventoryItem.create({ data: { productId: created.id, quantity: 0 } });
+        return created;
       });
-      await tx.inventoryItem.create({ data: { productId: created.id, quantity: 0 } });
-      return created;
-    });
+    } catch (err) {
+      handleProductWriteError(err);
+    }
 
     success(res, product, 'Product created', 201);
   })
@@ -164,10 +208,17 @@ router.put(
   '/:id',
   authorize('ADMIN', 'MANAGER', 'STAFF'),
   asyncHandler(async (req, res) => {
-    const allowed = ['name', 'categoryId', 'unit', 'costPrice', 'sellPrice', 'minStock', 'barcode', 'description', 'isActive', 'image'];
-    const data = {};
-    allowed.forEach((k) => { if (req.body[k] !== undefined) data[k] = req.body[k]; });
-    const product = await prisma.product.update({ where: { id: req.params.id }, data, include: productInclude });
+    const allowed = ['sku', 'name', 'categoryId', 'unit', 'costPrice', 'sellPrice', 'minStock', 'barcode', 'description', 'isActive', 'image'];
+    const filtered = {};
+    allowed.forEach((k) => { if (req.body[k] !== undefined) filtered[k] = req.body[k]; });
+    const data = parseProductBody(filtered);
+
+    let product;
+    try {
+      product = await prisma.product.update({ where: { id: req.params.id }, data, include: productInclude });
+    } catch (err) {
+      handleProductWriteError(err);
+    }
     success(res, product, 'Product updated');
   })
 );

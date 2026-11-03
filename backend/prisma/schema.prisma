@@ -59,20 +59,74 @@ model User {
 }
 
 model Customer {
-  id        String   @id @default(cuid())
-  code      String   @unique
-  name      String
-  email     String?  @unique
-  password  String?
-  phone     String?
-  address   String?
-  avatar    String?
-  taxId     String?
-  isActive  Boolean  @default(true)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id               String   @id @default(cuid())
+  code             String   @unique
+  name             String
+  email            String?  @unique
+  password         String?
+  phone            String?
+  address          String?
+  avatar           String?
+  taxId            String?
+  marketingConsent Boolean  @default(false)
+  isActive         Boolean  @default(true)
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
 
   salesOrders SalesOrder[]
+  addresses   CustomerAddress[]
+  reviews     ProductReview[]
+}
+
+enum ResidenceType {
+  HOUSE
+  CONDO
+  TOWNHOUSE
+  APARTMENT
+  OTHER
+}
+
+enum VehicleAccess {
+  TRUCK_4_AND_6
+  TRUCK_4_ONLY
+  TRUCK_6_ONLY
+  NONE
+}
+
+model CustomerAddress {
+  id                 String         @id @default(cuid())
+  customerId         String
+  label              String
+  firstName          String
+  lastName           String
+  phone              String
+  phoneAlt           String?
+  houseNo            String
+  moo                String?
+  village            String?
+  floor              String?
+  room               String?
+  soi                String?
+  road               String?
+  postalCode         String
+  subdistrict        String?
+  district           String?
+  province           String?
+  residenceType      ResidenceType?
+  residenceOther     String?
+  hasElevator        Boolean?
+  vehicleAccess      VehicleAccess?
+  lat                Float?
+  lng                Float?
+  mapAddress         String?
+  isDefaultShipping  Boolean        @default(false)
+  isDefaultTax       Boolean        @default(false)
+  createdAt          DateTime       @default(now())
+  updatedAt          DateTime       @updatedAt
+
+  customer Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+
+  @@index([customerId])
 }
 
 model Supplier {
@@ -91,13 +145,21 @@ model Supplier {
 }
 
 model Category {
-  id          String    @id @default(cuid())
-  name        String    @unique
-  description String?
+  id               String    @id @default(cuid())
+  name             String    @unique
+  description      String?
+  longDescription  String?
+  imageUrl         String?
+  parentId         String?
+  sortOrder        Int       @default(0)
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
 
+  parent   Category?  @relation("CategoryTree", fields: [parentId], references: [id], onDelete: SetNull)
+  children Category[] @relation("CategoryTree")
   products Product[]
+
+  @@index([parentId])
 }
 
 model Product {
@@ -122,6 +184,7 @@ model Product {
   purchaseItems  PurchaseOrderItem[]
   movements      StockMovement[]
   images         ProductImage[]
+  reviews        ProductReview[]
 }
 
 model ProductImage {
@@ -133,6 +196,22 @@ model ProductImage {
   createdAt DateTime @default(now())
 
   product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+}
+
+model ProductReview {
+  id         String   @id @default(cuid())
+  productId  String
+  customerId String
+  rating     Int
+  comment    String?
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  product  Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  customer Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+
+  @@unique([productId, customerId])
+  @@index([productId, createdAt])
 }
 
 model InventoryItem {
@@ -200,6 +279,23 @@ model Payment {
 
   order      SalesOrder @relation(fields: [orderId], references: [id], onDelete: Cascade)
   verifiedBy User?      @relation("VerifiedBy", fields: [verifiedById], references: [id])
+}
+
+/// ช่องทางรับเงินที่แอดมินตั้งค่าให้ลูกค้าโอน (ชื่อบัญชี / เลขบัญชี / QR)
+model PaymentChannel {
+  id            String   @id @default(cuid())
+  name          String
+  bankName      String?
+  accountName   String
+  accountNumber String
+  qrImageUrl    String?
+  note          String?
+  isActive      Boolean  @default(true)
+  sortOrder     Int      @default(0)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@index([isActive, sortOrder])
 }
 
 model PurchaseOrder {

@@ -23,7 +23,18 @@ const authenticateCustomer = asyncHandler(async (req, res, next) => {
 
   const customer = await prisma.customer.findUnique({
     where: { id: decoded.id },
-    select: { id: true, email: true, name: true, phone: true, address: true, avatar: true, isActive: true },
+    select: {
+      id: true,
+      email: true,
+      name: true,
+      phone: true,
+      address: true,
+      avatar: true,
+      taxId: true,
+      code: true,
+      marketingConsent: true,
+      isActive: true,
+    },
   });
 
   if (!customer || !customer.isActive || !customer.email) {

@@ -2,11 +2,14 @@ import { useEffect, useState } from 'react';
 import { Package, AlertTriangle, ShoppingCart, DollarSign } from 'lucide-react';
 import { PieChart, Pie, Cell, ResponsiveContainer, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip } from 'recharts';
 import api from '../services/api';
+import { formatCurrency } from '../utils/format';
 import { StatCard, PageHeader, DataTable, StatusBadge, LoadingState } from '../components/ui';
+import { useLanguage } from '../i18n';
 
 const COLORS = ['#2563eb', '#06b6d4', '#8b5cf6', '#f59e0b'];
 
 export default function DashboardPage() {
+  const { t } = useLanguage();
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
 
@@ -19,22 +22,19 @@ export default function DashboardPage() {
 
   if (loading) return <LoadingState />;
 
-  const formatCurrency = (val) =>
-    new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(val || 0);
-
   const salesChart = (data?.recentOrders || []).slice().reverse().map((o, i) => ({
     name: `Order ${i + 1}`,
     total: Number(o.total),
   }));
 
   const orderColumns = [
-    { key: 'orderNo', label: 'Order ID' },
-    { key: 'customer', label: 'Customer', render: (r) => r.customer?.name },
-    { key: 'status', label: 'Status', render: (r) => <StatusBadge status={r.status} /> },
-    { key: 'total', label: 'Total', render: (r) => formatCurrency(Number(r.total)) },
+    { key: 'orderNo', label: t('store.orderNo') },
+    { key: 'customer', label: t('nav.customers'), render: (r) => r.customer?.name },
+    { key: 'status', label: t('common.status'), render: (r) => <StatusBadge status={r.status} /> },
+    { key: 'total', label: t('store.total'), render: (r) => formatCurrency(Number(r.total)) },
     {
       key: 'createdAt',
-      label: 'Date',
+      label: t('store.orderDate'),
       render: (r) => new Date(r.createdAt).toLocaleDateString(),
     },
   ];
@@ -42,8 +42,8 @@ export default function DashboardPage() {
   return (
     <div>
       <PageHeader
-        title="Dashboard"
-        subtitle="Overview of inventory and sales performance"
+        title={t('admin.dashboard.title')}
+        subtitle={t('admin.dashboard.subtitle')}
       />
 
       <div className="mb-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">

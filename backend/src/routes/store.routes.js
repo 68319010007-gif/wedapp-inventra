@@ -2,13 +2,20 @@ const express = require('express');
 const prisma = require('../config/database');
 const { authenticateCustomer } = require('../middleware/customerAuth');
 const { AppError, asyncHandler, success, paginate } = require('../utils/helpers');
-const { emitStockUpdate } = require('../socket');
 const upload = require('../middleware/upload');
+const {
+  shouldHaveStockDeducted,
+  restoreStock,
+  assertStockAvailable,
+  broadcastStock,
+} = require('../utils/stock');
+const { buildCategoryTree, getDescendantIds, attachProductCounts } = require('../utils/categories');
+const { buildPublicSettings } = require('../utils/siteSettings');
 
 const router = express.Router();
 
 const productInclude = {
-  category: true,
+  category: { include: { parent: { include: { parent: true } } } },
   inventoryItems: true,
   images: { orderBy: { sortOrder: 'asc' } },
 };
@@ -19,13 +26,28 @@ const orderInclude = {
 };
 
 router.get(
+  '/settings',
+  asyncHandler(async (_req, res) => {
+    const settings = await prisma.setting.findMany({
+      where: {
+        key: { in: ['app_name', 'app_tagline', 'app_logo', 'admin_logo', 'store_tagline', 'hero_slides'] },
+      },
+    });
+    const map = settings.reduce((acc, s) => ({ ...acc, [s.key]: s.value }), {});
+    success(res, buildPublicSettings(map));
+  })
+);
+
+router.get(
   '/categories',
   asyncHandler(async (req, res) => {
-    const categories = await prisma.category.findMany({
-      orderBy: { name: 'asc' },
-      include: { _count: { select: { products: true } } },
-    });
-    success(res, categories);
+    const categories = attachProductCounts(
+      await prisma.category.findMany({
+        orderBy: [{ sortOrder: 'asc' }, { name: 'asc' }],
+        include: { _count: { select: { products: true } } },
+      })
+    );
+    success(res, { items: categories, tree: buildCategoryTree(categories) });
   })
 );
 
@@ -36,7 +58,11 @@ router.get(
     const { skip, take, page: p, limit: l } = paginate(page, limit);
 
     const where = { isActive: true };
-    if (categoryId) where.categoryId = categoryId;
+    if (categoryId) {
+      const allCategories = await prisma.category.findMany({ select: { id: true, parentId: true } });
+      const ids = getDescendantIds(categoryId, allCategories);
+      where.categoryId = { in: ids };
+    }
     if (search) {
       where.OR = [
         { name: { contains: search, mode: 'insensitive' } },
@@ -65,6 +91,114 @@ router.get(
   })
 );
 
+async function getReviewEligibility(customerId, productId) {
+  if (!customerId) return { canReview: false, reason: 'login_required' };
+  const existing = await prisma.productReview.findUnique({
+    where: { productId_customerId: { productId, customerId } },
+  });
+  if (existing) return { canReview: false, reason: 'already_reviewed', review: existing };
+
+  const purchased = await prisma.salesOrderItem.findFirst({
+    where: {
+      productId,
+      order: { customerId, status: { not: 'CANCELLED' } },
+    },
+  });
+  if (!purchased) return { canReview: false, reason: 'not_purchased' };
+  return { canReview: true };
+}
+
+router.get(
+  '/products/:id/reviews',
+  asyncHandler(async (req, res) => {
+    const product = await prisma.product.findFirst({ where: { id: req.params.id, isActive: true } });
+    if (!product) throw new AppError('Product not found', 404);
+
+    const reviews = await prisma.productReview.findMany({
+      where: { productId: product.id },
+      orderBy: { createdAt: 'desc' },
+      include: { customer: { select: { name: true } } },
+    });
+
+    const agg = await prisma.productReview.aggregate({
+      where: { productId: product.id },
+      _avg: { rating: true },
+      _count: { rating: true },
+    });
+
+    success(res, {
+      items: reviews.map((r) => ({
+        id: r.id,
+        rating: r.rating,
+        comment: r.comment,
+        createdAt: r.createdAt,
+        customerName: r.customer.name?.split(' ')[0] || 'Customer',
+      })),
+      summary: {
+        average: agg._avg.rating ? Number(agg._avg.rating.toFixed(1)) : 0,
+        count: agg._count.rating,
+      },
+    });
+  })
+);
+
+router.get(
+  '/products/:id/reviews/eligibility',
+  asyncHandler(async (req, res) => {
+    const product = await prisma.product.findFirst({ where: { id: req.params.id, isActive: true } });
+    if (!product) throw new AppError('Product not found', 404);
+
+    let customerId = null;
+    const authHeader = req.headers.authorization;
+    if (authHeader?.startsWith('Bearer ')) {
+      try {
+        const jwt = require('jsonwebtoken');
+        const config = require('../config/env');
+        const decoded = jwt.verify(authHeader.slice(7), config.jwtSecret);
+        customerId = decoded.id;
+      } catch {
+        /* ignore invalid token */
+      }
+    }
+
+    const eligibility = await getReviewEligibility(customerId, product.id);
+    success(res, eligibility);
+  })
+);
+
+router.post(
+  '/products/:id/reviews',
+  authenticateCustomer,
+  asyncHandler(async (req, res) => {
+    const { rating, comment } = req.body;
+    const product = await prisma.product.findFirst({ where: { id: req.params.id, isActive: true } });
+    if (!product) throw new AppError('Product not found', 404);
+
+    const stars = Number(rating);
+    if (!Number.isInteger(stars) || stars < 1 || stars > 5) {
+      throw new AppError('Rating must be between 1 and 5');
+    }
+
+    const eligibility = await getReviewEligibility(req.customer.id, product.id);
+    if (!eligibility.canReview) {
+      if (eligibility.reason === 'already_reviewed') throw new AppError('You have already reviewed this product', 409);
+      if (eligibility.reason === 'not_purchased') throw new AppError('You can only review products you have purchased', 403);
+      throw new AppError('Cannot submit review', 403);
+    }
+
+    const review = await prisma.productReview.create({
+      data: {
+        productId: product.id,
+        customerId: req.customer.id,
+        rating: stars,
+        comment: comment?.trim() || null,
+      },
+    });
+
+    success(res, review, 'Review submitted', 201);
+  })
+);
+
 router.get(
   '/products/:id',
   asyncHandler(async (req, res) => {
@@ -86,78 +220,54 @@ router.post(
   '/checkout',
   authenticateCustomer,
   asyncHandler(async (req, res) => {
-    const { items, note, customer } = req.body;
+    const { items, note, customer, shippingAddress } = req.body;
     if (!items?.length) throw new AppError('Items are required');
 
     const shippingLines = [];
     if (customer?.name) shippingLines.push(`Ship to: ${customer.name}`);
     if (customer?.phone) shippingLines.push(`Phone: ${customer.phone}`);
     if (customer?.address) shippingLines.push(`Address: ${customer.address}`);
-    const fullNote = [note, shippingLines.join(' | ')].filter(Boolean).join('\n');
 
-    for (const item of items) {
-      const product = await prisma.product.findUnique({
-        where: { id: item.productId },
-        include: { inventoryItems: true },
-      });
-      if (!product || !product.isActive) throw new AppError(`Product not available: ${item.productId}`);
-      const stock = product.inventoryItems?.quantity ?? 0;
-      if (stock < item.quantity) throw new AppError(`Insufficient stock for ${product.name}`);
+    const noteParts = [];
+    if (note?.trim()) noteParts.push(note.trim());
+    if (shippingAddress && typeof shippingAddress === 'object') {
+      noteParts.push(`---SHIPPING---\n${JSON.stringify(shippingAddress)}`);
     }
+    if (shippingLines.length) noteParts.push(shippingLines.join(' | '));
+    const fullNote = noteParts.join('\n') || 'Online store order';
 
-    const count = await prisma.salesOrder.count();
-    const orderNo = `SO-${String(count + 1).padStart(5, '0')}`;
     const customerRecord = req.customer;
 
-    let subtotal = 0;
-    const orderItems = [];
-    for (const item of items) {
-      const product = await prisma.product.findUnique({ where: { id: item.productId } });
-      const unitPrice = Number(product.sellPrice);
-      const total = unitPrice * item.quantity;
-      subtotal += total;
-      orderItems.push({ productId: item.productId, quantity: item.quantity, unitPrice, total });
-    }
-
-    const stockChanges = [];
-
     const order = await prisma.$transaction(async (tx) => {
-      const created = await tx.salesOrder.create({
+      await assertStockAvailable(tx, items);
+
+      let subtotal = 0;
+      const orderItems = [];
+      for (const item of items) {
+        const product = await tx.product.findUnique({ where: { id: item.productId } });
+        const unitPrice = Number(product.sellPrice);
+        const total = unitPrice * item.quantity;
+        subtotal += total;
+        orderItems.push({ productId: item.productId, quantity: item.quantity, unitPrice, total });
+      }
+
+      const count = await tx.salesOrder.count();
+      const orderNo = `SO-${String(count + 1).padStart(5, '0')}`;
+
+      return tx.salesOrder.create({
         data: {
           orderNo,
           customerId: customerRecord.id,
-          status: 'PROCESSING',
+          status: 'PENDING',
           subtotal,
           discount: 0,
           total: subtotal,
           note: fullNote || 'Online store order',
           items: { create: orderItems },
         },
-        include: { customer: true, items: { include: { product: true } } },
+        include: { customer: true, items: { include: { product: true } }, payment: true },
       });
-
-      for (const item of orderItems) {
-        const inv = await tx.inventoryItem.findUnique({ where: { productId: item.productId } });
-        const updated = await tx.inventoryItem.update({
-          where: { productId: item.productId },
-          data: { quantity: inv.quantity - item.quantity },
-        });
-        stockChanges.push({ productId: item.productId, quantity: updated.quantity });
-        await tx.stockMovement.create({
-          data: {
-            productId: item.productId,
-            type: 'OUT',
-            quantity: item.quantity,
-            reference: orderNo,
-            note: 'Online store checkout',
-          },
-        });
-      }
-
-      return created;
     });
-
-    stockChanges.forEach(({ productId, quantity }) => emitStockUpdate(productId, quantity));
 
     success(res, order, 'Order placed successfully', 201);
   })
@@ -210,30 +320,18 @@ router.patch(
     if (!order) throw new AppError('Order not found', 404);
     if (order.status === 'CANCELLED') throw new AppError('Order is already cancelled');
     if (['SHIPPING', 'COMPLETED'].includes(order.status)) {
-      throw new AppError('This order can no longer be cancelled — it has already been shipped or completed');
+      throw new AppError('This order can no longer be cancelled Ã¢ÂÂ it has already been shipped or completed');
     }
 
     const stockChanges = [];
 
     const updated = await prisma.$transaction(async (tx) => {
-      for (const item of order.items) {
-        const inv = await tx.inventoryItem.findUnique({ where: { productId: item.productId } });
-        const newQty = (inv?.quantity ?? 0) + item.quantity;
-        if (inv) {
-          await tx.inventoryItem.update({ where: { productId: item.productId }, data: { quantity: newQty } });
-        } else {
-          await tx.inventoryItem.create({ data: { productId: item.productId, quantity: newQty } });
-        }
-        stockChanges.push({ productId: item.productId, quantity: newQty });
-        await tx.stockMovement.create({
-          data: {
-            productId: item.productId,
-            type: 'IN',
-            quantity: item.quantity,
-            reference: order.orderNo,
-            note: 'Order cancelled by customer — stock restored',
-          },
+      if (shouldHaveStockDeducted(order.status)) {
+        const restored = await restoreStock(tx, order.items, {
+          reference: order.orderNo,
+          note: 'Order cancelled by customer Ã¢ÂÂ stock restored',
         });
+        stockChanges.push(...restored);
       }
 
       return tx.salesOrder.update({
@@ -243,7 +341,7 @@ router.patch(
       });
     });
 
-    stockChanges.forEach(({ productId, quantity }) => emitStockUpdate(productId, quantity));
+    broadcastStock(stockChanges);
 
     await prisma.auditLog.create({
       data: {

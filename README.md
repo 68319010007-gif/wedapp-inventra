@@ -167,6 +167,14 @@ GET    /payments/:id
 PATCH  /payments/:id/verify
 PATCH  /payments/:id/reject
 
+GET    /payment-channels/public
+GET    /payment-channels
+POST   /payment-channels
+GET    /payment-channels/:id
+PUT    /payment-channels/:id
+PATCH  /payment-channels/:id/toggle
+DELETE /payment-channels/:id
+
 GET    /reports/sales
 GET    /reports/inventory
 GET    /settings
@@ -179,6 +187,13 @@ POST   /store/auth/login
 GET    /store/auth/me
 PUT    /store/auth/profile
 PUT    /store/auth/password
+POST   /store/auth/upload
+
+GET    /store/addresses
+POST   /store/addresses
+GET    /store/addresses/:id
+PUT    /store/addresses/:id
+DELETE /store/addresses/:id
 
 GET    /store/categories
 GET    /store/products
@@ -190,6 +205,23 @@ GET    /store/orders/:id
 PATCH  /store/orders/:id/cancel
 POST   /store/orders/:id/payment
 ```
+
+## Customer Account (หน้าร้าน)
+
+| หน้า | URL |
+| --- | --- |
+| ภาพรวมบัญชี | `/account` |
+| แก้ไขข้อมูลส่วนตัว | `/account/profile` |
+| จัดการที่อยู่ | `/account/addresses` |
+| คำสั่งซื้อ | `/account/orders` |
+
+## Payment Channels (ช่องทางรับเงิน)
+
+แอดมินตั้งค่าบัญชี/QR ที่ `/admin/payment-channels` — ลูกค้าจะเห็นช่องทางเหล่านี้ตอนกด **แจ้งชำระเงิน** ในหน้าคำสั่งซื้อ
+
+| หน้า | URL |
+| --- | --- |
+| จัดการช่องทางรับเงิน (แอดมิน) | `/admin/payment-channels` |
 
 ## Real-time Updates
 

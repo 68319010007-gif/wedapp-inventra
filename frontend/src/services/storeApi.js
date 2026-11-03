@@ -7,4 +7,10 @@ const storeApi = axios.create({
   headers: { 'Content-Type': 'application/json' },
 });
 
+storeApi.interceptors.request.use((config) => {
+  const token = localStorage.getItem('inventra_store_token');
+  if (token) config.headers.Authorization = `Bearer ${token}`;
+  return config;
+});
+
 export default storeApi;
